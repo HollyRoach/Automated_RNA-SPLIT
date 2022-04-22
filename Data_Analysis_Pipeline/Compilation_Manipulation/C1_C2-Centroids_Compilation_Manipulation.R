@@ -1,30 +1,21 @@
 ####################################################################################################################
 #SCRIPT COMPILES C1/C2-CENTROIDS AND CALCULATES TOTAL MOLECULE COUNT, TURNOVER AND TRANSCRIPTION DYNAMICS
 ####################################################################################################################
-#OUTPUTS: New_Line_Name_Molecule_Count/Turnover/Transcription_Dynamics_Compile.csv and New_All_Cell_Lines_Molecule_Count/Turnover/Transcription_Dynamics_Compile.csv 
+#OUTPUTS: New_Line_Name_Molecule_Count/Turnover/Transcription_Dynamics_Compile.csv
 #compiles all data from the C1-Centroids.csv and C2-Centroids.csv files into 1 table for the new cell line (New_Line_Name_Centroids_Compile.csv)
 #uses number of rows in each C1/2-Centroids.csv to calculate number of centroids for each cloud
 #adds up number of pulse 1 and 2 centroids to find total molecule count 
 #uses number of pulse 2 centroids to calculate transcription dynamics (from dynamic dataset only)
 #normalises the number of pulse 1 centroids to calculate turnover (from turnover dataset only)
-#adds this newly compiled data to a table containing the centroid measurements for all existing cell lines (New_All_Cell_Lines_Centroids_Compile.csv)
-#makes sure tidyverse and stringr packaged have been installed - install.packages("package_name")
+#makes sure tidyverse, stringr and tcltk packaged have been installed - install.packages("package_name")
 
 #load libraries
 library(tidyverse)
 library(stringr)
 library(tcltk)
 
-#create functions to replace choose.dir
-choose_input_dir <- function(caption = "Select Watershed_Algorithm_Results folder, where raw data is found") {
-  if (exists('utils::choose.dir')) {
-    choose.dir(caption = caption)
-  } else {
-    tk_choose.dir(caption = caption)
-  }
-}
-
-choose_output_dir <- function(caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored") {
+#create function to replace choose.dir
+choose_dir <- function(caption = 'Select data directory') {
   if (exists('utils::choose.dir')) {
     choose.dir(caption = caption)
   } else {
@@ -36,17 +27,16 @@ choose_output_dir <- function(caption = "Select Pulse_Chase_Analysis folder, whe
 #USER INPUT REQUIRED
 
 #set name of new cell line - should be spelled the same as folder name within the directory
-New_Line_Name <- "Mettl3_dTAG"           
+New_Line_Name <- "Test"           
 
 #define type of cells used in experiment - either "mESCs" or "NPCs"
 Cell_Type <- "mESCs"
 
 #creates list of datasets being used for compile - if cell line has stable Xist can include Turnover and Dynamic datasets
-#either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics" or both
 Data_Set_List <- c("nascent_Xist_dynamics",
                    "Xist_turnover_on_chromatin")
 
-#define time points used for this specific cell line
+#define time points used in both datasets
 #doesn't matter if initiation/maintenance have different time points as long as all time points are included
 Dynamic_Time <- c(10, 20, 30,40, 50, 60)
 Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
@@ -54,16 +44,12 @@ Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
 #creates list of phases being used for compile
 Phase_List <- c("Initiation", "Maintenance")
 
-
 #define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
-#Input_File_Path <- choose.dir(default = "", caption = "Select Watershed_Algorithm_Results folder, where raw data is found")
-Input_File_Path <- choose_input_dir
-
-
+Input_File_Path <- choose_dir(caption = "Select (open on Mac) Watershed_Algorithm_Results folder, where raw data is found")
 
 #define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
-#Output_File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
-Output_File_Path <- choose_output_dir
+Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analysis folder, where compiled data will be stored")
+
 
 ################################################################################
 #validate inputs
@@ -93,6 +79,19 @@ if (Cell_Type == "mESCs" | Cell_Type == "NPCs") {
 } else {
   stop("Invalid name entered in Cell_Type - must be mESCs or NPCs")
 }
+
+#checks correct folder has been selected for input file path
+if (str_sub(Input_File_Path, -27, -1) == "Watershed_Algorithm_Results") {
+} else {
+  stop("Watershed_Algorithm_Results folder not selected for Input_File_Path")
+}
+
+#checks correct folder has been selected for output file path
+if (str_sub(Output_File_Path, -20, -1) == "Pulse_Chase_Analysis") {
+} else {
+  stop("Pulse_Chase_Analysis folder not selected for Output_File_Path")
+}
+
 
 
 ################################################################################
@@ -160,7 +159,8 @@ for (Data_Set in Data_Set_List) {
     
     #add a column to compiled_tibble which contains the name of the cloud the Raw_Data file corresponds to
     compiled_tibble<- compiled_tibble %>%
-      mutate(Cloud_Name = str_sub(File_Path, -47, -38))  #indexes used to extract name of cloud from the File_Path (constant in all data sets)
+      # mutate(Cloud_Name = str_sub(File_Path, -47, -38))  #indexes used to extract name of cloud from the File_Path (constant in all data sets)
+      mutate(Cloud_Name = str_extract(File_Path, r"(\d{0,2}_Cloud\-\d)"))
     
     #creates new tibble (compiled_Pulse_1_and_2_Centroids) - removes columns that are not useful (eg File_Path, Raw_Data etc)
     Pulse_1_and_2_Centroids_compile <- compiled_tibble %>%
@@ -231,7 +231,7 @@ if (file.exists(paste(TMC_Other_Data_Path, "New_All_Cell_Lines_Molecule_Count_Co
   TMC_Other_Cell_Lines <- read_csv(paste(TMC_Other_Data_Path, "TEMPLATE_Molecule_Count_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
 }
 
-#add new cell line data to other existing cloud volume data
+#add new cell line data to other existing total molecule count data
 if (any(TMC_Other_Cell_Lines$Cell_Line == New_Line_Name)) {
   warning("This cell line already exists in Main Dataframe")
   All_Total_Count <- TMC_Other_Cell_Lines
@@ -268,7 +268,7 @@ if (file.exists(paste(Trans_Other_Data_Path, "New_All_Cell_Lines_Transcription_D
   Trans_Other_Cell_Lines <- read_csv(paste(Trans_Other_Data_Path, "TEMPLATE_Transcription_Dynamics_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
 }
 
-#add new cell line data to other existing cloud volume data
+#add new cell line data to other existing transcription dynamics data
 if (any(Trans_Other_Cell_Lines$Cell_Line == New_Line_Name)) {
   warning("This cell line already exists in Main Dataframe")
   All_Transcription <- Trans_Other_Cell_Lines
