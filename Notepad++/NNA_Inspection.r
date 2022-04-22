@@ -19,9 +19,6 @@ library(stats)
 #set name of new cell line
 New_Line_Name <- "Mettl3_dTAG"           #name should be spelled the same as file name within the directory
 
-#set name of which dataset to inspect -either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics" or both
-Data_Set <- "Xist_turnover_on_chromatin"
-
 #set name of reference/control line
 Reference_Line_Name <- "WT"
 
@@ -45,7 +42,7 @@ Reference_Line <- All_NNA_Data %>%
 #STEP 2: load all NNA data relating to new cell line - chooses files which contain original data and cloud names
 
 #contains Cell_line, Data Set, Phase, Pulse, Time for each data-point
-New_Cell_Line <- read_csv(paste(File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, paste(New_Line_Name, "NNA_Compile.csv", sep="_"), sep="/"))
+New_Cell_Line <- read_csv(paste(File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, paste(New_Line_Name, "NNA_Compile.csv", sep="_"), sep="/"))
 
 ################################################################################
 #STEP 3: calculate statistics for new and WT cell line based on
@@ -91,7 +88,7 @@ Stats_Reference_Line <- Reference_Line %>%
 #STEP 5: save summary stats tables
 
 #save in csv format
-Save_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", "Stats", Data_Set, sep="/")
+Save_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", "Stats", sep="/")
 
 write_csv(Time_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name, "_NNA_Summary_Stats_Compare_Time_Points.csv", sep=""), sep="/"))
-write_csv(Phase_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name,"_NNA_Summary_Stats_Compare_Phase.csv", sep="" ), sep="/"))
+write_csv(Phase_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name,"_NNA_Summary_Stats_Compare_Pulses.csv", sep="" ), sep="/"))

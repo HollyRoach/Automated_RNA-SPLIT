@@ -13,24 +13,6 @@
 #load libraries
 library(tidyverse)
 library(stringr)
-library(tcltk)
-
-#create functions to replace choose.dir
-choose_input_dir <- function(caption = "Select Watershed_Algorithm_Results folder, where raw data is found") {
-  if (exists('utils::choose.dir')) {
-    choose.dir(caption = caption)
-  } else {
-    tk_choose.dir(caption = caption)
-  }
-}
-
-choose_output_dir <- function(caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored") {
-  if (exists('utils::choose.dir')) {
-    choose.dir(caption = caption)
-  } else {
-    tk_choose.dir(caption = caption)
-  }
-}
 
 ################################################################################
 #USER INPUT REQUIRED
@@ -54,16 +36,12 @@ Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
 #creates list of phases being used for compile
 Phase_List <- c("Initiation", "Maintenance")
 
-
 #define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
-#Input_File_Path <- choose.dir(default = "", caption = "Select Watershed_Algorithm_Results folder, where raw data is found")
-Input_File_Path <- choose_input_dir
-
-
+Input_File_Path <- choose.dir(default = "", caption = "Select Watershed_Algorithm_Results folder, where raw data is found")
 
 #define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
-#Output_File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
-Output_File_Path <- choose_output_dir
+Output_File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
+
 
 ################################################################################
 #validate inputs

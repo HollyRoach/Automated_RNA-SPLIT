@@ -20,9 +20,6 @@ library(stringr)
 #define type of cells used in experiment
 Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
 
-#define which dataset to present - either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics"
-Data_Set <- "nascent_Xist_dynamics"
-
 #######################
 #SELECT DATA TO PRESENT
 
@@ -74,7 +71,7 @@ File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis fol
 if (file.exists(paste(File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines_Merged", "New_All_Cell_Lines_NNA_Compile.csv", sep="/"))) { 
   All_NNA_Data <- read_csv(paste(File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines_Merged", "New_All_Cell_Lines_NNA_Compile.csv", sep="/"))
 } else{
-  stop("New_All_Cell_Lines_NNA_Compile.csv file does not exist in directory
+  stop("New_All_Cell_Lines_Cloud_Volume_Compile.csv file does not exist in directory
        - check File_Path input")
 }
 
@@ -393,7 +390,7 @@ NNA_p_Values <- Edu_Exp_p_values %>%
             Phase_p_values)
 
 #save p values
-Save_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, sep="/")
+Save_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, sep="/")
 
 write_csv(p_values, paste(Save_Path, paste(New_Line_Name, "NNA_Wilcox_Test_p_values.csv", sep=""), sep="/"))
 

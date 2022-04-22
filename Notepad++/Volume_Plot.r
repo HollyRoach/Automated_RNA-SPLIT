@@ -227,7 +227,7 @@ e <- Exp_Stat_Diff$p.value
 f <- Exp_Diff_Less$p.value
 g <- Exp_Diff_More$p.value
 Exp_p_values <- tibble(e, f, g) %>%
-  transmute(Comparision = paste("Compare_Exp_Phase", Refernece_Line , "vs", New_Line_Name, sep='_'),
+  transmute(Comparision = paste("Compare_Both_Phases", Refernece_Line , "vs", New_Line_Name, sep='_'),
             General_Stat_Diff = e,
             Diff_Statistically_Less = f,
             Diff_Statistically_More = g) 
@@ -264,7 +264,7 @@ h <- SS_Stat_Diff$p.value
 i <- SS_Diff_Less$p.value
 j <- SS_Diff_More$p.value
 SS_p_values <- tibble(h, i, j) %>%
-  transmute(Comparision = paste("Compare_SS_Phase", Refernece_Line , "vs", New_Line_Name, sep='_'),
+  transmute(Comparision = paste("Compare_Both_Phases", Refernece_Line , "vs", New_Line_Name, sep='_'),
             General_Stat_Diff = h,
             Diff_Statistically_Less = i,
             Diff_Statistically_More = j) 

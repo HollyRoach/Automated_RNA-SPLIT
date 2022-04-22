@@ -20,8 +20,9 @@ New_Line_Name <- "Mettl3_dTAG"
 Cell_Type <- "mESCs"
 
 #creates list of datasets being used for compile - if cell line has stable Xist can include Turnover and Dynamic datasets
-#ONLY USE either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics" NOT BOTH (as will append the datasets together which is not wanted)
-Data_Set_List <- c("nascent_Xist_dynamics")
+#either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics" or both
+Data_Set_List <- c(#"nascent_Xist_dynamics",
+                   "Xist_turnover_on_chromatin")
 
 #define time points used for this specific cell line
 #doesn't matter if initiation/maintenance have different time points as long as all time points are included
@@ -258,7 +259,7 @@ if (any(Other_Cell_Lines$Cell_Line == New_Line_Name)) {
 #save tables
 
 #create file path to save data just for new cell line
-Save_Path_1 <- paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, sep="/")
+Save_Path_1 <- paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, sep="/")
 
 #create name of file which contains only the new cell line data
 File_Name_1 <- paste(New_Line_Name, "NNA_Compile.csv", sep="_")

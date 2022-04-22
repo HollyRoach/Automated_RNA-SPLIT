@@ -1,0 +1,72 @@
+///////////////////////////////////////////////////////////////////////////////////
+//SCRIPT TO RECORD X, Y, Z DIMENSIONS + VOLUME FOR EACH CROPPED IMAGE IN DIRECTORY
+//////////////////////////////////////////////////////////////////////////////////
+//need to input correct parameters in lines 7,8 
+
+//define parameters of the data you are running the script for
+Phase = "Initiation_"   //either Initiation or Maintenance_
+Time = "10"             //10, 20, 30, 40, 50, 60 for Dynamic
+                        //0, 60, 100, 140, 180, 220 for Turnover
+
+//set directories
+dir1 = getDirectory("Choose Source Directory ");		//choose directory where cropped images are loacted
+dir2 = getDirectory("Choose Destination Directory ");	//choose directory where to save results table
+list = getFileList(dir1);     
+setBatchMode(false);
+
+//For Loop which only opens up the cropped images within the directory
+for (i=0; i<list.length; i++)  {				
+
+	Cropped_Image = dir1 + list[i]; 			//creates list of files within the directory
+
+	if (endsWith(Cropped_Image, "ALN.tif")) {	//speficies cropped images as file name ends in ALN.tif
+   	
+    	//opens all the cropped images
+    	open(Cropped_Image);
+	}
+}
+
+//For Loop which calculates data to be stored in the results table
+for (i=0; i<nImages; i++) {
+	selectImage(i+1);
+
+	//get name of the cloud
+	Image = getTitle();
+	a = indexOf(Image, "FUS"); //finds the index of FUS in the file path --> uses this to find the indexes for cloud name
+	b = a - 11;                //finds index of where the cloud name begins
+	c = a -1;                  //finds index of where cloud name ends
+	Cloud = substring(Image, b, c);	
+									
+	//find the x, y, z dimensions of the cropped image
+    width = getWidth(); 			//returns x dimension of image in pixels
+	x_dimension = width*0.0410000;	//convert width from pixels to microns
+
+	height = getHeight(); 			//returns y dimension of image in pixels
+	y_dimension = height*0.0410000; //convert height from pixels to microns
+
+	depth = nSlices()/2; 			// returns double the number of z stacks why was it double?
+	z_dimension = depth*0.125; 		//converts depth to mircons as 0.125microns between each z stack
+
+    //record data into results table
+	setResult("Phase", i, Phase);									//records the phase the cloud belongs to
+	setResult("Time", i, Time);			 							//records the time point the Cloud belongs to
+	setResult("Cloud", i, Cloud);				    				//records the Cloud Name 
+    setResult("x_Dimension", i, x_dimension);						//records the x_dimension of the image
+    setResult("y_Dimension", i, y_dimension);						//records the y_dimension of the image
+    setResult("z_Dimension", i, z_dimension);						//records the z_dimension of the image
+ 	setResult("No_Z_Stacks", i, depth);								//records number of Z stacks in the image
+	setResult("Volume", i, x_dimension*y_dimension*z_dimension);	//records volume of cloud
+}
+
+//opens and updates the result table
+setOption("ShowRowNumbers", false);
+updateResults;
+
+//renames and saves the results table	
+Table.rename("Results", "Cloud_Volume_"+Phase+Time);
+saveAs("Results", dir2+"Cloud_Volume_"+Phase+Time+".csv");
+
+close("*"); //closes all images
+
+print("Successfully created table of Cloud Volumes");
+print("Next Run scipt in R to compile all the Cloud Volume tables");

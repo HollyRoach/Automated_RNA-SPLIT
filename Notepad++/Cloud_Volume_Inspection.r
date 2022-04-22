@@ -85,7 +85,7 @@ Stats_Reference_Line <- Reference_Line %>%
          Upper_Quartile = quantile(Cloud_Volume, 0.75),     #finds the upper quartile  Cloud_Volume for each phase
          Lower_Quartile = quantile(Cloud_Volume, 0.25),     #finds the lower quartile  Cloud_Volume for each phase
          No_Data_Points = n()) %>%                          #finds the number of data points in each phase) %>%                 
-  select(-Cloud_Volume, - Data_Set, -Time, -Cloud_Name) %>% #removes Cloud_Volumes column 
+  select(-Cloud_Volume) %>%                                 #removes Cloud_Volumes column 
   distinct()                                                #ensures just one set of statistics for each phase
 
 ################################################################################
@@ -94,4 +94,4 @@ Stats_Reference_Line <- Reference_Line %>%
 Save_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", "Stats", sep="/")
 
 write_csv(Time_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name, "_Cloud_Volume_Summary_Stats_Compare_Time_Points.csv", sep=""), sep="/"))
-write_csv(Phase_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name,"_Cloud_Volume_Summary_Stats_Compare_Pulses.csv", sep="" ), sep="/"))
+write_csv(Pulse_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name,"_Cloud_Volume_Summary_Stats_Compare_Pulses.csv", sep="" ), sep="/"))

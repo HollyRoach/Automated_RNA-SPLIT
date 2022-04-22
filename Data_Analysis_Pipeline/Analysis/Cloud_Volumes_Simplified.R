@@ -30,7 +30,7 @@ New_Line_Name <- "Mettl3_dTAG"
 
 Refernece_Line <- "WT"        #reference_line will be used to perform stats test with
 
-Cell_Line_3 <- "Ciz1_KO"
+#Cell_Line_3 <- "Ciz1_KO"
 
 Cell_Line_4 <- "SPEN_RRM_del"  
 
@@ -44,33 +44,23 @@ p <- 0.05
 #may need to adjust scale for y-axis on line 
 
 #define colours for each cell line - leave blank if not presenting all 4 cell lines
-Colour_1_exp <- "#A6BDDB" #sets colour for expansion phase new cell line
-Colour_1_ss <- "#3690C0"  #sets colour for steady state phase new cell line
-
-Colour_2_exp <- "#FA9FB5" #sets colour for expansion phase new reference_line
-Colour_2_ss <- "#DD3497"  #sets colour for steady state phase new reference_line
-
-Colour_3_exp <- "#FEB24C" #sets colour for expansion phase new cell_line_3
-Colour_3_ss <- "#FC4E2A"  #sets colour for steady state phase new cell_line_3
-
-Colour_4_exp <- "#ADDD8E" #sets colour for expansion phase new cell_line_3
-Colour_4_ss <- "#41AB5D"  #sets colour for steady state phase new cell_line_3
-# Colour_2 <- c("#A6BDDB", "#3690C0") #sets colour for reference_line
-# Colour_3 <- c("#FEB24C", "#FC4E2A") #sets colour for cell_line_3
-# Colour_4 <- c("#ADDD8E", "#41AB5D") #sets colour for cell_line_4
+Colour_1 <- "#F768A1" #sets colour for new cell line
+Colour_2 <- "#67A9CF" #sets colour for reference_line
+Colour_3 <- "#FD8D3C" #sets colour for cell_line_3
+Colour_4 <- "#78C679" #sets colour for cell_line_4
 
 
 #set name of how cell lines should be presented in the plot - ensures name consistency with other papers
 #if name contains delta/triangle symbol use - "SPEN^"~Delta*"RRM"
-Name_1 <- bquote("METTL3_FKBP12"^"F36V") #sets name for new cell line
-Name_2 <- bquote("WT")                   #sets name for reference_line
-Name_3 <- bquote("Ciz1_KO")              #sets name for cell_line_3
-Name_4 <- bquote("SPEN"^~Delta*"RRM")    #sets name for cell_line_4
+Name_1 <- bquote("Methylation_Removed") #sets name for new cell line
+Name_2 <- bquote("Normal_Cell")                   #sets name for reference_line
+#Name_3 <- bquote("Ciz1_KO")              #sets name for cell_line_3
+Name_4 <- bquote("Delocalised_Mutant")    #sets name for cell_line_4
 
 #set name of plot titles
-Title <- "Xist Cluster Volume"
-x_axis <- "Phase"
-y_axis <- bquote("Xist"~"Territory"~"Volume"~"["*mu*"m"^"3"*"]")
+Title <- "Volume of Nucleus Occupied byXist RNA"
+#x_axis <- "Cell Type"
+y_axis <- bquote("Volume"~"of"~"Xist"~"RNA"~"["*mu*"m"^"3"*"]")
 
 
 #################################################################################
@@ -103,25 +93,12 @@ if (any(All_Cloud_Volume_Data$Cell_Line == New_Line_Name)) {
 #chose which data to present in box plot
 Present_Data <- All_Cloud_Volume_Data %>%
   filter(Cell_Line %in%
-           c(Refernece_Line, New_Line_Name, Cell_Line_3, Cell_Line_4) &  #select which cell lines to present
-        Phase %in%
-          c("Initiation", "Maintenance")) %>%                            #select which Phases to present
-  mutate(Phase = case_when(Phase == "Initiation" ~ "Expansion",          #ensures naming consistency with other papers
-                           Phase == "Maintenance" ~ "Steady_State")) %>%                 
-  mutate(Key = paste(Phase, Cell_Line, sep="_"))                         #creates key variable to base colour coding off
-
+           c(Refernece_Line, New_Line_Name, Cell_Line_4)) 
 
 #order data to be presented in box plot 
 Present_Data$Cell_Line <- factor(Present_Data$Cell_Line, 
-                                 levels = c(Refernece_Line, New_Line_Name, Cell_Line_3, Cell_Line_4), ordered = TRUE,
-                                 labels = c(Name_2, Name_1, Name_3, Name_4))  
-
-#put in order for the graphs to appear on the x-axis
-Present_Data$Key <- factor(Present_Data$Key, 
-                                 levels = c(paste("Expansion", Refernece_Line, sep="_"), paste("Steady_State", Refernece_Line, sep="_"),
-                                            paste("Expansion", New_Line_Name, sep="_"), paste("Steady_State", New_Line_Name, sep="_"),
-                                            paste("Expansion", Cell_Line_3, sep="_"), paste("Steady_State", Cell_Line_3, sep="_"),
-                                            paste("Expansion", Cell_Line_4, sep="_"), paste("Steady_State", Cell_Line_4, sep="_"), ordered = TRUE))
+                                 levels = c(Refernece_Line, New_Line_Name, Cell_Line_4), ordered = TRUE,
+                                 labels = c(Name_2, Name_1, Name_4))  
 
 
 #################################################################################
@@ -131,14 +108,14 @@ Present_Data$Key <- factor(Present_Data$Key,
 theme <- theme(plot.title = element_text(family = "Calibri", face = "bold", size = (20)),
                legend.title = element_text(family = "Calibri", size = (16)), 
                legend.text = element_text(family = "Calibri", size = (14)), 
-               axis.title = element_text(family = "Calibri", face = "bold", size = (16)),
+               axis.title = element_text(family = "Calibri", size = (16)),
                axis.text = element_text(family = "Calibri", face = "bold", size = (12)),
                strip.text.x = element_text(family = "Calibri", size = (16)))
 
 #sets name of labels for each cell line
 Labels = c(Cell_Line = Name_1,
            Cell_Line = Name_2,
-           Cell_Line = Name_3,
+           #Cell_Line = Name_3,
            Cell_Line = Name_4)
 
 #calculate the y scale for the plot
@@ -146,17 +123,13 @@ Min_y = min(Present_Data$Cloud_Volume, na.rm = TRUE)
 Max_y = max(Present_Data$Cloud_Volume, na.rm = TRUE)  
 
 #make box plot
-box_plot <- ggplot(Present_Data, aes(x= Phase, y = Cloud_Volume, fill = Key)) + #defines data to present
+box_plot <- ggplot(Present_Data, aes(x = Cell_Line, y = Cloud_Volume, fill = Cell_Line)) + #defines data to present
   geom_boxplot(outlier.shape = NA) +                                            #defines type of plot
-  facet_wrap(~Cell_Line, nrow = 1, labeller = label_parsed) +                   #separates cell lines, and sets labels
-  scale_fill_manual(values = c(Colour_1_exp, Colour_1_ss,                       #defines the colour of each boxplot 
-                               Colour_2_exp, Colour_2_ss,                                               
-                               Colour_3_exp, Colour_3_ss,                                                  
-                               Colour_4_exp, Colour_4_ss)) +                                                     
+  #facet_wrap(~Cell_Line, nrow = 1, labeller = label_parsed) +                   #separates cell lines, and sets labels
+  scale_fill_manual(values = c(Colour_1, Colour_2, Colour_4)) +                                                     
   coord_cartesian(ylim = c((Min_y-10),(1200) )) +                               #adjusts scale so whiskers don't touch the end graph 
   labs(title = Title,                                                           #sets name of the axes
-       x = x_axis,
-       y = y_axis) +                                          
+      y = y_axis) +                                          
   theme                                                                         #adds the theme which defines the font, text size etc
 
 #view the box plot

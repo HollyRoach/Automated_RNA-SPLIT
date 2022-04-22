@@ -7,6 +7,7 @@
 #     if an unusual/ unexpected result occurs use the New_Line to locate the cloud that relates to the unusual data point
 #     visualise cloud corresponding to unusual data point in Fiji/ImageJ
 
+#input correct parameters in lines 22, 25, 28
 
 #load libraries
 library(tidyverse)
@@ -17,13 +18,14 @@ library(stats)
 #USER INPUT REQUIRED
 
 #set name of new cell line
-New_Line_Name <- "Mettl3_dTAG"           #name should be spelled the same as file name within the directory
+New_Line_Name <- "Test"           #name should be spelled the same as file name within the directory
 
 #set name of reference/control line
 Reference_Line_Name <- "WT"
 
 #define type of cells used in experiment
 Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
+
 
 #define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
 File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
@@ -86,7 +88,7 @@ Stats_Reference_Line <- Reference_Line %>%
          Upper_Quartile = quantile(Distance, 0.75), #finds the upper quartile  Distance over all time points
          Lower_Quartile = quantile(Distance, 0.25), #finds the lower quartile  Distance over all time points
          No_Data_Points = n()) %>%                  #finds the number of data points in each phase  
-  select(-Distance, -Cloud_Name, -Data_Set, -Phase, -Time, -Pulse) %>% #removes Distances column 
+  select(-Distance) %>%                             #removes Distances column 
   distinct()                                        #ensures just one set of statistics over all time points
 
 ################################################################################
