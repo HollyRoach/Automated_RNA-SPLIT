@@ -11,54 +11,54 @@
 #makes sure tidyverse, stringr and tcltk packaged have been installed - install.packages("package_name")
 
 #load libraries
-library(tidyverse)
-library(stringr)
-library(tcltk)
+# library(tidyverse)
+# library(stringr)
+# library(tcltk)
 
 #create function to replace choose.dir so that it is compatible with mac OS
-choose_dir <- function(caption = 'Select data directory') {
-  if (exists('utils::choose.dir')) {
-    choose.dir(caption = caption)
-  } else {
-    tk_choose.dir(caption = caption)
-  }
-}
+# choose_dir <- function(caption = 'Select data directory') {
+#   if (exists('utils::choose.dir')) {
+#     choose.dir(caption = caption)
+#   } else {
+#     tk_choose.dir(caption = caption)
+#   }
+# }
 
 ################################################################################
 #USER INPUT REQUIRED
-
-#set name of new cell line - should be spelled the same as folder name within the directory
-#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
-#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
-New_Line_Name <- "Test"           
-
-#define type of cells used in experiment - either "mESCs" or "NPCs"
-Cell_Type <- "mESCs"
-
-#define time points used in both datasets
-#make sure that the lists include all the possible time-points for your data
-#it is ok if the lists contain extra time-points, as these lists are a superset of time points
-#it doesn't matter if initiation/maintenance have different time points
-Dynamic_Time <- c(10, 20, 30, 40, 50, 60)
-Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
-
-
-################################################################################
-#OTHER INPUTS
-#the below inputs should not need changing
-
-#creates list of datasets being used for compile
-Data_Set_List <- c("nascent_Xist_dynamics",
-                   "Xist_turnover_on_chromatin")
-
-#creates list of phases being used for compile
-Phase_List <- c("Initiation", "Maintenance")
-
-#define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
-Input_File_Path <- choose_dir(caption = "Select (open on Mac) Watershed_Algorithm_Results folder, where raw data is found")
-
-#define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
-Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analysis folder, where compiled data will be stored")
+# 
+# #set name of new cell line - should be spelled the same as folder name within the directory
+# #make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+# #eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+# New_Line_Name <- "Test"           
+# 
+# #define type of cells used in experiment - either "mESCs" or "NPCs"
+# Cell_Type <- "mESCs"
+# 
+# #define time points used in both datasets
+# #make sure that the lists include all the possible time-points for your data
+# #it is ok if the lists contain extra time-points, as these lists are a superset of time points
+# #it doesn't matter if initiation/maintenance have different time points
+# Dynamic_Time <- c(10, 20, 30, 40, 50, 60)
+# Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
+# 
+# 
+# ################################################################################
+# #OTHER INPUTS
+# #the below inputs should not need changing
+# 
+# #creates list of datasets being used for compile
+# Data_Set_List <- c("nascent_Xist_dynamics",
+#                    "Xist_turnover_on_chromatin")
+# 
+# #creates list of phases being used for compile
+# Phase_List <- c("Initiation", "Maintenance")
+# 
+# #define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
+# Input_File_Path <- choose_dir(caption = "Select (open on Mac) Watershed_Algorithm_Results folder, where raw data is found")
+# 
+# #define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
+# Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analysis folder, where compiled data will be stored")
 
 
 ################################################################################
@@ -192,7 +192,7 @@ for (Data_Set in Data_Set_List) {
 
 #if folder for new cell line does not exit, create folder to save centroid data
 Cen_path <- paste(Output_File_Path, Cell_Type, "Centroids", New_Line_Name, sep="/")
-dir.create(Cen_path)
+suppressWarnings(dir.create(Cen_path))
 
 #define file path to location of data for all other cell lines
 Cen_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Centroids", "All_Cell_Lines", sep="/")
@@ -233,7 +233,7 @@ Total_Count <- Pulse_1 %>%
 
 #if folder for new cell line does not exit, create folder to save molecule count data
 TMC_path <- paste(Output_File_Path, Cell_Type, "Molecule_Count", New_Line_Name, sep="/")
-dir.create(TMC_path)
+suppressWarnings(dir.create(TMC_path))
 
 #define file path to location of data for all other cell lines
 TMC_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Molecule_Count", "All_Cell_Lines", sep="/")
@@ -265,7 +265,7 @@ Transcription <- New_Cell_Line %>%
 
 #if folder for new cell line does not exit, create folder to save transcription data
 Trans_path <- paste(Output_File_Path, Cell_Type, "Transcription_Dynamics", New_Line_Name, sep="/")
-dir.create(Trans_path)
+suppressWarnings(dir.create(Trans_path))
 
 #define file path to location of data for all other cell lines
 Trans_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines", sep="/")
@@ -298,7 +298,7 @@ Turnover <- Turnover %>%
 
 #if folder for new cell line does not exit, create folder to save turnover data
 Turn_path <- paste(Output_File_Path, Cell_Type, "Turnover", New_Line_Name, sep="/")
-dir.create(Turn_path)
+suppressWarnings(dir.create(Turn_path))
 
 #save data in both locations
 Turn_File_Name <- paste(New_Line_Name, "Turnover_Compile.csv", sep="_")

@@ -9,41 +9,41 @@
 #makes sure tidyverse, stringr and tcltk packaged have been installed - install.packages("package_name")
 
 #load libraries
-library(tidyverse)
-library(stringr)
-library(tcltk)
+# library(tidyverse)
+# library(stringr)
+# library(tcltk)
 
 #create function to replace choose.dir so that it is compatible with mac OS
-choose_dir <- function(caption = 'Select data directory') {
-  if (exists('utils::choose.dir')) {
-    choose.dir(caption = caption)
-  } else {
-    tk_choose.dir(caption = caption)
-  }
-}
+# choose_dir <- function(caption = 'Select data directory') {
+#   if (exists('utils::choose.dir')) {
+#     choose.dir(caption = caption)
+#   } else {
+#     tk_choose.dir(caption = caption)
+#   }
+# }
 
 ################################################################################
 #USER INPUT REQUIRED
 
-#set name of new cell line - should be spelled the same as folder name within the directory
-#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
-#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
-New_Line_Name <- "Test"           
-
-#define type of cells used in experiment - either "mESCs" or "NPCs"
-Cell_Type <- "mESCs"
-
-
-################################################################################
-#OTHER INPUTS
-#the below inputs should not need changing
-
-#creates list of datasets being used for compile
-Data_Set_List <- c("nascent_Xist_dynamics",
-                   "Xist_turnover_on_chromatin")
-
-#define file path to where "Pulse_Chase_Analysis" is located - results from ImageJ_Cloud_Volume.ijm are stored
-File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
+# #set name of new cell line - should be spelled the same as folder name within the directory
+# #make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+# #eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+# New_Line_Name <- "Test"           
+# 
+# #define type of cells used in experiment - either "mESCs" or "NPCs"
+# Cell_Type <- "mESCs"
+# 
+# 
+# ################################################################################
+# #OTHER INPUTS
+# #the below inputs should not need changing
+# 
+# #creates list of datasets being used for compile
+# Data_Set_List <- c("nascent_Xist_dynamics",
+#                    "Xist_turnover_on_chromatin")
+# 
+# #define file path to where "Pulse_Chase_Analysis" is located - results from ImageJ_Cloud_Volume.ijm are stored
+# Output_File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
 
 
 ################################################################################
@@ -66,13 +66,13 @@ if (!(Cell_Type == "mESCs" | Cell_Type == "NPCs")) {
 }
 
 #checks correct folder has been selected for file path
-if (!(str_sub(File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
-  stop("Pulse_Chase_Analysis folder not selected for File_Path")
+if (!(str_sub(Output_File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
+  stop("Pulse_Chase_Analysis folder not selected for Output_File_Path")
 }
 
 
 #checks that user has permissions to read and write files in Pulse_Chase_Analysis folder
-if (!(file.access(File_Path, 2) == 0 && file.access(File_Path, 4) == 0 )) {
+if (!(file.access(Output_File_Path, 2) == 0 && file.access(Output_File_Path, 4) == 0 )) {
   stop("Invalid file permissions for Pulse_Chase_Analysis folder - check in folders properties that you have permission to read&write")
 }
 
@@ -121,7 +121,7 @@ for (Data_Set in Data_Set_List) {
   }
 
   #set file path to the location of the Cloud_Volume files 
-  Input_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, Data_Set, "Individual_Time_Points", sep="/")
+  Input_Path <- paste(Output_File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, Data_Set, "Individual_Time_Points", sep="/")
 
   #stores name of all Cloud_Volume files, in the directory, into a vector
   Volume_Files <- list.files(path = Input_Path, pattern = "0.*csv", full.names  = TRUE)   #all Cloud_Volume files end in a 0
@@ -147,10 +147,10 @@ for (Data_Set in Data_Set_List) {
 #save tables
 
 #if folder for new cell line does not exit, create folder to save density data
-save_path <- paste(File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, sep="/")
+save_path <- paste(Output_File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, sep="/")
 
 #define file path to location of data for all other cell lines
-Other_Data_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines", sep="/")
+Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines", sep="/")
 
 #save data in both locations
 File_Name <- paste(New_Line_Name, "Cloud_Volume_Compile.csv", sep="_")

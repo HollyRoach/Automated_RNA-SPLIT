@@ -9,35 +9,35 @@
 #     visualise cloud corresponding to unusual data point in Fiji/ImageJ
 
 
-#load libraries
-library(tidyverse)
-library(stats)
-library(tcltk)
-
-#create function to replace choose.dir so that it is compatible with mac OS
-choose_dir <- function(caption = 'Select data directory') {
-  if (exists('utils::choose.dir')) {
-    choose.dir(caption = caption)
-  } else {
-    tk_choose.dir(caption = caption)
-  }
-}
+# #load libraries
+# library(tidyverse)
+# library(stats)
+# library(tcltk)
+# 
+# #create function to replace choose.dir so that it is compatible with mac OS
+# choose_dir <- function(caption = 'Select data directory') {
+#   if (exists('utils::choose.dir')) {
+#     choose.dir(caption = caption)
+#   } else {
+#     tk_choose.dir(caption = caption)
+#   }
+# }
 
 
 ################################################################################
 #USER INPUT REQUIRED
 
-#set name of new cell line - should be spelled the same as folder name within the directory
-#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
-#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
-New_Line_Name <- "Test"  
-
-#set name of reference/control line 
-#make sure spelling of this name is the same as what appears in the Pulse_Chase_Analysis\mESCs\Molecule_Count\All_Cell_Lines folder
-Reference_Line_Name <- "WT"
-
-#define type of cells used in experiment - either "mESCs" or "NPCs"
-Cell_Type <- "mESCs"
+# #set name of new cell line - should be spelled the same as folder name within the directory
+# #make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+# #eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+# New_Line_Name <- "Test"  
+# 
+# #set name of reference/control line 
+# #make sure spelling of this name is the same as what appears in the Pulse_Chase_Analysis\mESCs\Molecule_Count\All_Cell_Lines folder
+# Reference_Line_Name <- "WT"
+# 
+# #define type of cells used in experiment - either "mESCs" or "NPCs"
+# Cell_Type <- "mESCs"
 
 
 ################################################################################
@@ -45,7 +45,7 @@ Cell_Type <- "mESCs"
 #the below inputs should not need changing
 
 #define file path to where "Pulse_Chase_Analysis" is located
-File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
+File_Path <- Output_File_Path
 
 
 ################################################################################
