@@ -1,97 +1,103 @@
 ################################################################################
 #SCRIPT INSCPECTS ALL Cloud Volume DATA - gives quick insight into the data 
+#please dontact Holly Roach at hmroach@hotmail.co.uk if you have any questions
 ################################################################################
-#want to know the median, min, max, n, UQ, LQ of new cell line 
+#returns basic summary stats for cloud volume data 
 #how do these values compare to the WT/reference cell line
 #inspect stats summary tables made for new cell line and compare to WT/hypothesis
-#     if an unusual/ unexpected result occurs use the New_Line to locate the cloud that relates to the unusual data point
+#     if an unusual/ unexpected result occurs use the New_Cell_Line to locate the cloud name/image that relates to the unusual data point
 #     visualise cloud corresponding to unusual data point in Fiji/ImageJ
 
 
 #load libraries
 library(tidyverse)
 library(stats)
+library(tcltk)
+
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 
 ################################################################################
 #USER INPUT REQUIRED
 
-#set name of new cell line
-New_Line_Name <- "Mettl3_dTAG"           #name should be spelled the same as file name within the directory
+#set name of new cell line - should be spelled the same as folder name within the directory
+#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+New_Line_Name <- "Test"  
 
-#set name of reference/control line
+#set name of reference/control line 
+#make sure spelling of this name is the same as what appears in the Pulse_Chase_Analysis\mESCs\Centroids\All_Cell_Lines folder
 Reference_Line_Name <- "WT"
 
-#define type of cells used in experiment
-Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
-
-#define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
-File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
-
-################################################################################
-#STEP 1:upload all Cloud_Volume data for a reference/control sample
-
-All_Cloud_Volume_Data <- read_csv(paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Cloud_Volume_Compile.csv", sep="/"))
-
-#choose which cell lines to compare too
-Reference_Line <- All_Cloud_Volume_Data %>%
-  filter(Cell_Line ==Reference_Line_Name) 
+#define type of cells used in experiment - either "mESCs" or "NPCs"
+Cell_Type <- "mESCs"
 
 
 ################################################################################
-#STEP 2: load all Cloud_Volume data relating to new cell line - chooses files which contain original data and cloud names
+#OTHER INPUTS
+#the below inputs should not need changing
 
-#contains Cell_line, Data Set, Phase, Pulse, Time for each data-point
-New_Cell_Line <- read_csv(paste(File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, paste(New_Line_Name, "Cloud_Volume_Compile.csv", sep="_"), sep="/"))
+#define file path to where "Pulse_Chase_Analysis" is located
+File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
+
+
+################################################################################
+#VALIDATE INPUTS
+
+#checks name of cell type
+if (!(Cell_Type == "mESCs" | Cell_Type == "NPCs")) {
+  stop("Invalid name entered in Cell_Type - must be mESCs or NPCs")
+}
+
+#checks correct folder has been selected for file path
+if (!(str_sub(File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
+  stop("Pulse_Chase_Analysis folder not selected for File_Path")
+}
+
+#checks that Pulse_Chase_Analysis folder contains folder for new cell line
+if (!dir.exists(paste(File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, sep="/"))) {
+  stop(paste("Folder for the new cell line (", New_Line_Name, " - New_Line_Name) does not exist in Pulse_Chase_Analysis folder", sep=""))
+}
+
+################################################################################
+#STEP 1:upload centroid data for new cell line and the reference/control sample
+
+Reference_Line <- read_csv(paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines", paste(Reference_Line_Name, "Cloud_Volume_Compile.csv", sep="_"), sep="/"))
+
+New_Cell_Line <- read_csv(paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines", paste(New_Line_Name, "Cloud_Volume_Compile.csv", sep="_"), sep="/"))
 
 
 ################################################################################
-#STEP 3: calculate statistics for new and WT cell line based on
-#look at tables generated 
-#if unusual results occur, use New_Cell_Line tibble to identify and inspect the clouds responsible
+#STEP 2: create stat summary for the number of centroids present in each pulse per phase and time point
 
-#calculate summary statistics table for new cell line Cloud volume data grouped by phase and data set
-Phase_Stats_New_Cell_Line <- New_Cell_Line %>%          
-  group_by(Phase, Data_Set) %>%                         #groups the data based on phase and data set
-  mutate(Median = median(Cloud_Volume),                 #finds the median  Cloud_Volume for each phase
-         Max = max(Cloud_Volume),                       #finds the maximum  Cloud_Volume for each phase
-         Min = min(Cloud_Volume),                       #finds the minimum  Cloud_Volume for each phase
-         Upper_Quartile = quantile(Cloud_Volume, 0.75), #finds the upper quartile  Cloud_Volume for each phase
-         Lower_Quartile = quantile(Cloud_Volume, 0.25), #finds the lower quartile  Cloud_Volume for each phase
-         No_Data_Points = n()) %>%                      #finds the number of data points in each phase
-  select(-Cloud_Name, -Time, -Cloud_Volume) %>%         #removes unnessasry columns
-  distinct()                                            #ensures just one set of statistics for each phase
+#stat summary for reference dynamic initiation dataset
+cloud_vol_stats <- Reference_Line %>% 
+  bind_rows(New_Cell_Line) %>% 
+  group_by(Cell_Line, Data_Set, Phase) %>%           #group data
+  summarise(n=n(),                                         #find number of data points
+            Mean=mean(Cloud_Volume),                       #finds the mean 
+            Median = median(Cloud_Volume),                 #find the median
+            Upper_Quartile = quantile(Cloud_Volume, 0.75), #find the upper quartile
+            Lower_Quartile = quantile(Cloud_Volume, 0.25), #find the lower quartile
+            SD=sd(Cloud_Volume)) %>%                       #finds standard deviation
+  mutate(SE = SD/sqrt(n),                                  #finds standard error of mean
+         CI_95 = SE * qt((1-0.05)/2 + .5, n-1))            #finds 95% confidence limit
 
-#calculate summary statistics table for new cell line Cloud volume data grouped by phase and data set
-Time_Stats_New_Cell_Line <- New_Cell_Line %>% 
-  group_by(Time, Phase, Data_Set) %>%                     #groups the data based on Time and data set
-  mutate(Median = median(Cloud_Volume),                   #finds the median  Cloud_Volume for each Time
-         Max = max(Cloud_Volume),                         #finds the maximum  Cloud_Volume for each Time
-         Min = min(Cloud_Volume),                         #finds the minimum  Cloud_Volume for each Time
-         Upper_Quartile = quantile(Cloud_Volume, 0.75),   #finds the upper quartile  Cloud_Volume for each Time
-         Lower_Quartile = quantile(Cloud_Volume, 0.25),   #finds the lower quartile  Cloud_Volume for each Time
-         No_Data_Points = n()) %>%                        #finds the number of data points in time
-  select(-Cloud_Name, -Cloud_Volume) %>%                  #removes unnessasry columns
-  distinct() %>%                                          #ensures just one set of statistics for each Time
-  arrange(Time) %>%                                       #puts data in time order
-  arrange(Data_Set)                                       #puts data in order of Data Set
-
-#calculate summary statistics table for WT/comparison cell line
-Stats_Reference_Line <- Reference_Line %>%
-  group_by(Phase) %>%                                       #groups the data based on phase
-  mutate(Median = median(Cloud_Volume),                     #finds the median  Cloud_Volume for each phase
-         Max = max(Cloud_Volume),                           #finds the maximum  Cloud_Volume for each phase
-         Min = min(Cloud_Volume),                           #finds the minimum  Cloud_Volume for each phase
-         Upper_Quartile = quantile(Cloud_Volume, 0.75),     #finds the upper quartile  Cloud_Volume for each phase
-         Lower_Quartile = quantile(Cloud_Volume, 0.25),     #finds the lower quartile  Cloud_Volume for each phase
-         No_Data_Points = n()) %>%                          #finds the number of data points in each phase) %>%                 
-  select(-Cloud_Volume, - Data_Set, -Time, -Cloud_Name) %>% #removes Cloud_Volumes column 
-  distinct()                                                #ensures just one set of statistics for each phase
 
 ################################################################################
-#STEP 5: save summary stats tables for new cell line
+#STEP 3: look at generated stats table --> if any result seems unusual use the New_Cell_Line table to identify the cloud + view in Fiji/ImageJ
 
-Save_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", "Stats", sep="/")
+################################################################################
+#STEP 4: save summary stats table for new cell line
 
-write_csv(Time_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name, "_Cloud_Volume_Summary_Stats_Compare_Time_Points.csv", sep=""), sep="/"))
-write_csv(Phase_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name,"_Cloud_Volume_Summary_Stats_Compare_Pulses.csv", sep="" ), sep="/"))
+Save_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, sep="/")
+File_Name <-paste(New_Line_Name, "Cloud_Volume_Summary_Stats.csv", sep="_")
+
+write_csv(cloud_vol_stats, paste(Save_Path, File_Name, sep="/"))

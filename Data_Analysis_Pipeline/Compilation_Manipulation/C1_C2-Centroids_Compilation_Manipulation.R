@@ -128,16 +128,12 @@ New_Cell_Line <- tibble(Cell_Line = character(),
 for (Data_Set in Data_Set_List) {
   
   #based on data set being used - defines name of the data
+  #based on data set being used - defines vector of Times, each corresponds to a folder in the directory
   if (Data_Set == "nascent_Xist_dynamics") {
     Data_Name <- "Dynamic"
-  } else {
-    Data_Name <- "Turnover"
-  }
-  
-  #based on data set being used - defines vector of Times, each corresponds to a folder in the directory
-  if (Data_Set == "nascent_Xist_dynamics" ) {
     Time_points <- Dynamic_Time
   } else {
+    Data_Name <- "Turnover"
     Time_points <- Turnover_Time
   }
   

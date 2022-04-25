@@ -1,102 +1,103 @@
 ################################################################################
 #SCRIPT INSCPECTS ALL DENSITY DATA - gives quick insight into the data 
+#please dontact Holly Roach at hmroach@hotmail.co.uk if you have any questions
 ################################################################################
-#want to know the median, min, max, n, UQ, LQ of new cell line 
+#returns basic summary stats of density measurements
 #how do these values compare to the WT/reference cell line
 #inspect stats summary tables made for new cell line and compare to WT/hypothesis
-#     if an unusual/ unexpected result occurs use the New_Line to locate the cloud that relates to the unusual data point
+#     if an unusual/ unexpected result occurs use the New_Cell_Line to locate the cloud name/image that relates to the unusual data point
 #     visualise cloud corresponding to unusual data point in Fiji/ImageJ
 
 
 #load libraries
 library(tidyverse)
 library(stats)
+library(tcltk)
+
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 
 ################################################################################
 #USER INPUT REQUIRED
 
-#set name of new cell line
-New_Line_Name <- "Mettl3_dTAG"           #name should be spelled the same as file name within the directory
+#set name of new cell line - should be spelled the same as folder name within the directory
+#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+New_Line_Name <- "Test"  
 
-#set name of reference/control line
+#set name of reference/control line 
+#make sure spelling of this name is the same as what appears in the Pulse_Chase_Analysis\mESCs\Centroids\All_Cell_Lines folder
 Reference_Line_Name <- "WT"
 
-#define type of cells used in experiment
-Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
-
-#define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
-File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
-
-################################################################################
-#STEP 1:upload all Density data for a reference/control sample
-
-All_Density_Data <- read_csv(paste(File_Path, Cell_Type, "Density", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Density_Compile.csv", sep="/"))
-
-#choose which cell lines to compare too
-Reference_Line <- All_Density_Data %>%
-  filter(Cell_Line ==Reference_Line_Name) 
+#define type of cells used in experiment - either "mESCs" or "NPCs"
+Cell_Type <- "mESCs"
 
 
 ################################################################################
-#STEP 2: load all Density data relating to new cell line - chooses files which contain original data and cloud names
+#OTHER INPUTS
+#the below inputs should not need changing
 
-#contains Cell_line, Data Set, Phase, Pulse, Time for each data-point
-New_Line <- read_csv(paste(File_Path, Cell_Type, "Density", New_Line_Name, paste(New_Line_Name, "Density_Compile.csv", sep="_"), sep="/"))
+#define file path to where "Pulse_Chase_Analysis" is located
+File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
 
 
 ################################################################################
-#STEP 3: calculate statistics for new and reference/control cell line based on
+#VALIDATE INPUTS
 
-#calculate summary statistics table for new cell line Density data grouped by time and data set
-Time_Stats_New_Cell_Line <- New_Line %>% 
-  group_by(Data_Set, Phase, Time) %>%               #groups the data based on Phase, Time and data set
-  mutate(Median = median(Distance),                 #finds the median Distance for each Time per data set
-         Max = max(Distance),                       #finds the maximum Distance for each Time per data set
-         Min = min(Distance),                       #finds the minimum Distance for each Time per data set
-         Upper_Quartile = quantile(Distance, 0.75), #finds the upper quartile Distance for each Time per data set
-         Lower_Quartile = quantile(Distance, 0.25), #finds the lower quartile Distance for each Time per data set
-         No_Data_Points = n()) %>%                  #finds the number of data points in each time per data set     
-  select(-Cloud_Name,-Distance, -Pulse) %>%         #removes Distances/Cloud Names column 
-  distinct() %>%                                    #ensures just one set of statistics for each Time
-  arrange(Time) %>%                                 #puts table in time order
-  arrange(Data_Set)                                 #separates data sets within table
+#checks name of cell type
+if (!(Cell_Type == "mESCs" | Cell_Type == "NPCs")) {
+  stop("Invalid name entered in Cell_Type - must be mESCs or NPCs")
+}
 
-#calculate summary stats for each pulse per data set
+#checks correct folder has been selected for file path
+if (!(str_sub(File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
+  stop("Pulse_Chase_Analysis folder not selected for File_Path")
+}
 
-Pulse_Stats_New_Cell_Line <- New_Line %>% 
-  group_by(Data_Set, Phase, Pulse) %>%              #groups the data based on Phase, Pulse and data set
-  mutate(Median = median(Distance),                 #finds the median Distance for each Pulse per data set
-         Max = max(Distance),                       #finds the maximum Distance for each Pulse per data set
-         Min = min(Distance),                       #finds the minimum Distance for each Pulse per data set
-         Upper_Quartile = quantile(Distance, 0.75), #finds the upper quartile Distance for each Pulse per data set
-         Lower_Quartile = quantile(Distance, 0.25), #finds the lower quartile Distance for each Pulse per data set
-         No_Data_Points = n()) %>%                  #finds the number of data points in each Pulse per data set 
-  select(-Cloud_Name,-Distance, -Time) %>%          #removes Distances/Cloud Names column 
-  distinct() %>%                                    #ensures just one set of statistics for each Pulse
-  arrange(Phase) %>%                                #puts table in Pulse order
-  arrange(Data_Set)                                 #separates data sets within table
-
-
-#calculate summary statistics table for reference/control/comparison cell line
-Stats_Reference_Line <- Reference_Line %>%
-  mutate(Median = median(Distance),                 #finds the median  Distance over all time points
-         Max = max(Distance),                       #finds the maximum  Distance over all time points
-         Min = min(Distance),                       #finds the minimum  Distance over all time points
-         Upper_Quartile = quantile(Distance, 0.75), #finds the upper quartile  Distance over all time points
-         Lower_Quartile = quantile(Distance, 0.25), #finds the lower quartile  Distance over all time points
-         No_Data_Points = n()) %>%                  #finds the number of data points in each phase  
-  select(-Distance, -Cloud_Name, -Data_Set, -Phase, -Time, -Pulse) %>% #removes Distances column 
-  distinct()                                        #ensures just one set of statistics over all time points
+#checks that Pulse_Chase_Analysis folder contains folder for new cell line
+if (!dir.exists(paste(File_Path, Cell_Type, "Density", New_Line_Name, sep="/"))) {
+  stop(paste("Folder for the new cell line (", New_Line_Name, " - New_Line_Name) does not exist in Pulse_Chase_Analysis folder", sep=""))
+}
 
 ################################################################################
-#STEP 4: look at generated stats table --> if any result seems unusual use the New_Cell_Line table to identify the cloud + view in Fiji/ImageJ
+#STEP 1:upload centroid data for new cell line and the reference/control sample
+
+Reference_Line <- read_csv(paste(File_Path, Cell_Type, "Density", "All_Cell_Lines", paste(Reference_Line_Name, "Density_Compile.csv", sep="_"), sep="/"))
+
+New_Cell_Line <- read_csv(paste(File_Path, Cell_Type, "Density", "All_Cell_Lines", paste(New_Line_Name, "Density_Compile.csv", sep="_"), sep="/"))
+
 
 ################################################################################
-#STEP 5: save summary stats tables
+#STEP 2: create stat summary for the number of centroids present in each pulse per phase and time point
 
-Save_Path <- paste(File_Path, Cell_Type, "Density", "Stats", sep="/")
+#stat summary for reference dynamic initiation dataset
+density_stats <- Reference_Line %>% 
+  bind_rows(New_Cell_Line) %>% 
+  group_by(Cell_Line, Data_Set, Phase) %>%    #group data
+  summarise(n=n(),                                         #find number of data points
+            Mean=mean(Distance),                           #finds the mean 
+            Median = median(Distance),                     #find the median
+            Upper_Quartile = quantile(Distance, 0.75),     #find the upper quartile
+            Lower_Quartile = quantile(Distance, 0.25),     #find the lower quartile
+            SD=sd(Distance)) %>%                           #finds standard deviation
+  mutate(SE = SD/sqrt(n),                                  #finds standard error of mean
+         CI_95 = SE * qt((1-0.05)/2 + .5, n-1))            #finds 95% confidence limit
 
-write_csv(Time_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name, "_Density_Summary_Stats_Compare_Time_Points.csv", sep=""), sep="/"))
-write_csv(Pulse_Stats_New_Cell_Line, paste(Save_Path, paste(New_Line_Name,"_Density_Summary_Stats_Compare_Pulses.csv", sep="" ), sep="/"))
 
+################################################################################
+#STEP 3: look at generated stats table --> if any result seems unusual use the New_Cell_Line table to identify the cloud + view in Fiji/ImageJ
+
+################################################################################
+#STEP 4: save summary stats table for new cell line
+
+Save_Path <- paste(File_Path, Cell_Type, "Density", New_Line_Name, sep="/")
+File_Name <-paste(New_Line_Name, "Density_Summary_Stats.csv", sep="_")
+
+write_csv(density_stats, paste(Save_Path, File_Name, sep="/"))
