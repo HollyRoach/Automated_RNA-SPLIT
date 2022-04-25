@@ -1,21 +1,25 @@
 #############################################################################################################################################
 #SCRIPT CREATES BOX PLOT FOR Molecule Count DATA AND PREFORMS WILCOX STAT TEST
-#############################################################################################################################################
+#please email Holly Roach at hmroach@hotmail.co.uk if you have any questions
+#################################################################################
+
 #load libraries 
-
-#run these two lines on their own first
-library(extrafont)
-#font_import() 
-
-#finish running rest of the script from this line
-loadfonts(device = "win") #loads windows fonts to use
 library(tidyverse)
 library(RColorBrewer)
 library(stringr)
+library(tcltk)
 
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 ################################################################################
-#USER INPUT REQUIRED - check lines 21-71
+#USER INPUT REQUIRED - check lines 22-74
 
 #define type of cells used in experiment
 Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
@@ -26,7 +30,7 @@ Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
 #set name of new cell line, and up to 3 others to present in the plot
 #all names should be spelled the same as file names within the directory
 #can leave names empty if don't want to present them all
-New_Line_Name <- "Mettl3_dTAG"       
+New_Line_Name <- "Test"       
 
 Refernece_Line <- "WT"        #reference_line will be used to perform stats test with
 
@@ -44,8 +48,8 @@ p <- 0.05
 #may need to adjust scale for y-axis on line 
 
 #define colours for each cell line - leave blank if not presenting all 4 cell lines
-Colour_1_exp <- "#FA9FB5" #sets colour for expansion phase new reference_line
-Colour_1_ss <- "#DD3497"  #sets colour for steady state phase new reference_line
+Colour_1_exp <- "#FA9FB5" #sets colour for expansion phase reference line
+Colour_1_ss <- "#DD3497"  #sets colour for steady state phase reference line
 
 Colour_2_exp <- "#A6BDDB" #sets colour for expansion phase new cell line
 Colour_2_ss <- "#3690C0"  #sets colour for steady state phase new cell line
@@ -57,13 +61,13 @@ Colour_4_exp <- "#ADDD8E" #sets colour for expansion phase new cell_line_3
 Colour_4_ss <- "#41AB5D"  #sets colour for steady state phase new cell_line_3
 
 
-
 #set name of how cell lines should be presented in the plot - ensures name consistency with other papers
 #if name contains delta/triangle symbol use - "SPEN^"~Delta*"RRM"
 Name_1 <- bquote("METTL3_FKBP12"^"F36V") #sets name for new cell line
 Name_2 <- bquote("WT")                   #sets name for reference_line
 Name_3 <- bquote("Ciz1_KO")              #sets name for cell_line_3
 Name_4 <- bquote("SPEN"^~Delta*"RRM")    #sets name for cell_line_4
+
 
 #set name of plot titles
 Title <- "Number of Xist RNPs"
@@ -75,16 +79,19 @@ y_axis <- "Total Xist Count [no. centroids]"
 #STEP 1: load Molecule_Count data for plotting
 
 #define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
-File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
+File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
 
-#open Molecule_Count data for all existing cell lines
-if (file.exists(paste(File_Path, Cell_Type, "Molecule_Count", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Molecule_Count_Compile.csv", sep="/"))) { 
-  All_Molecule_Count_Data <- read_csv(paste(File_Path, Cell_Type, "Molecule_Count", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Molecule_Count_Compile.csv", sep="/"))
-} else{
-  stop("New_All_Cell_Lines_Molecule_Count_Compile.csv file does not exist in directory
-       - check File_Path input")
-}
+#set file path to the location of the all cloud volume files 
+Input_Path <- paste(File_Path, Cell_Type, "Molecule_Count", "All_Cell_Lines", sep="/")
 
+#stores name of all Total_Molecule_Count_Compile.csv files , in the directory, into a vector
+Files <- list.files(path = Input_Path, pattern = "Total_Molecule_Count_Compile.csv", full.names  = TRUE)   
+
+#creates a list containing the Total_Molecule_Count_Compile.csv files
+File_List <- lapply(Files, read_csv, col_types="cccncnnn")
+
+#concatenates all the individual Total_Molecule_Count_Compile.csv files into 1 tibble
+All_Molecule_Count_Data <- bind_rows(File_List)
 
 #checks if new cell line data is stored in the dataframe containing all Molecule_Count data
 if (any(All_Molecule_Count_Data$Cell_Line == New_Line_Name)) {
@@ -125,14 +132,6 @@ Present_Data$Key <- factor(Present_Data$Key,
 #################################################################################
 #STEP 3: PLOT THE DATA
 
-#create theme for plots - defines font, text size etc
-theme <- theme(plot.title = element_text(family = "Calibri", face = "bold", size = (20)),
-               legend.title = element_text(family = "Calibri", size = (16)), 
-               legend.text = element_text(family = "Calibri", size = (14)), 
-               axis.title = element_text(family = "Calibri", face = "bold", size = (16)),
-               axis.text = element_text(family = "Calibri", face = "bold", size = (12)),
-               strip.text.x = element_text(family = "Calibri", size = (16)))
-
 #calculate the y scale for the plot
 Min_y = min(Present_Data$Total_Centroids, na.rm = TRUE) 
 Max_y = max(Present_Data$Total_Centroids, na.rm = TRUE)  
@@ -147,8 +146,7 @@ box_plot <- ggplot(Present_Data, aes(x= Phase, y = Total_Centroids, fill = Key))
   coord_cartesian(ylim = c((Min_y),(400) )) +                                      #adjusts scale so whiskers don't touch the end graph 
   labs(title = Title,                                                              #sets name of the axes
        x = x_axis,
-       y = y_axis) +                                          
-  theme   
+       y = y_axis)
 
 #view the box plot
 box_plot
@@ -187,11 +185,11 @@ p_values <- tibble(a, b, c) %>%
 
 if (Stat_Diff$p.value < p) {
   if (Diff_Less$p.value < Diff_More$p.value){
-    outcome_1 <- paste("Overall, the new cell line has statistically higher total centroid count than the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, the new cell line (", New_Line_Name,") has statistically higher total centroid count than the", Refernece_Line, sep=" ")
   } else {
-    outcome_1 <- paste("Overall, the new cell line has statistically lower total centroid count than the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, the new cell line (", New_Line_Name,") has statistically lower total centroid count than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_1 <- paste("Overall, there is no statistical difference in total centroid count between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, there is no statistical difference in total centroid count between the new cell line (", New_Line_Name,") and the", Refernece_Line, sep=" ")
   }
 
 #is there a general difference during the expansion phase between the data sets?
@@ -224,11 +222,11 @@ Exp_p_values <- tibble(e, f, g) %>%
 
 if (Exp_Stat_Diff$p.value < p) {
   if (Exp_Diff_Less$p.value < Exp_Diff_More$p.value){
-    outcome_2 <- paste("The new cell line has statistically higher total centroid count, during the expansion phase, than the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically higher total centroid count, during the expansion phase, than the", Refernece_Line, sep=" ")
   } else {
-    outcome_2 <- paste("The new cell line has statistically lower total centroid count, during the expansion phase, than the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically lower total centroid count, during the expansion phase, than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_2 <- paste("There is no statistical difference in total centroid count, during the expansion phase, between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("There is no statistical difference in total centroid count, during the expansion phase, between the new cell line (", New_Line_Name,") and the", Refernece_Line, sep=" ")
   }
 
 #is there a general difference during the Steady_State phase between the data sets?
@@ -261,11 +259,11 @@ SS_p_values <- tibble(h, i, j) %>%
 
 if (SS_Stat_Diff$p.value < p) {
   if (SS_Diff_Less$p.value < SS_Diff_More$p.value){
-    outcome_3 <- paste("The new cell line has statistically higher total centroid count, during the Steady_State phase, than the", Refernece_Line, sep=" ")
+    outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically higher total centroid count, during the Steady_State phase, than the", Refernece_Line, sep=" ")
   } else {
-    outcome_3 <- paste("The new cell line has statistically lower total centroid count, during the Steady_State phase, than the", Refernece_Line, sep=" ")
+    outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically lower total centroid count, during the Steady_State phase, than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_3 <- paste("There is no statistical difference in total centroid count, during the Steady_State phase, between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_3 <- paste("There is no statistical difference in total centroid count, during the Steady_State phase, between the new cell line (", New_Line_Name,") and the", Refernece_Line, sep=" ")
   }
 
 #combine all p values
@@ -280,7 +278,7 @@ write_csv(p_values, paste(Save_Path, paste(New_Line_Name, "_Molecule_Count_Wilco
 
 
 #provide outcomes of Wilcoxon tests
-if (Exp_Stat_Diff$p.value < p) {
+if (Stat_Diff$p.value < p) {
   print(outcome_1)
   print(outcome_2)
   print(outcome_3)

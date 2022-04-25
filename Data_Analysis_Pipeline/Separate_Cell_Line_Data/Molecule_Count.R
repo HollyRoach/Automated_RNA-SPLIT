@@ -19,16 +19,13 @@ file <- choose.files() %>%
 
 #create new columns in table
 file_new_cols <- file %>% 
-  mutate(Pulse = NA,
-         Data_Set = NA,
-         Time = NA,
-         Cloud_Name = NA) %>% 
   transmute(Cell_Line = Cell_Line,
-            Data_Set = Data_Set, 
-            Phase = Phase, 
-            Pulse = Pulse,
-            Time = Time, 
-            Cloud_Name = Cloud_Name,
+            Data_Set = NA, 
+            Phase = Phase,
+            Time = NA, 
+            Cloud_Name = NA,
+            P1_No_Centroids = NA,
+            P2_No_Centroids = NA,
             Total_Centroids = Total_Centroids)
 
 #cell line names
@@ -68,7 +65,7 @@ cell_lines <- c("WT", "Ciz1_KO", "SPEN_RRM_del", "SPOC_mut", "Mettl3_dTAG",
 
 files <- list.files(path = save_path, pattern = ".csv", full.names  = TRUE)
 
-file_lists <- lapply(files, read_csv, col_types = "ccccncn")
+file_lists <- lapply(files, read_csv, col_types = "cccncnnn")
 
 #concatenates all the individual tibbles into 1 tibble
 compile_files <- bind_rows(file_lists) 

@@ -1,21 +1,25 @@
 #################################################################################
 #SRCIPT CREATES BOX PLOT FOR CLOUD VOLUME DATA AND PREFORMS WILCOX STAT TEST
+#please email Holly Roach at hmroach@hotmail.co.uk if you have any questions
 #################################################################################
+
 #load libraries 
-
-#run these two lines on their own first
-library(extrafont)
-#font_import() 
-
-#finish running rest of the script from this line
-loadfonts(device = "win") #loads windows fonts to use
 library(tidyverse)
 library(RColorBrewer)
 library(stringr)
+library(tcltk)
 
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 ################################################################################
-#USER INPUT REQUIRED - check lines 21-63
+#USER INPUT REQUIRED - check lines 22-74
 
 #define type of cells used in experiment
 Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
@@ -44,20 +48,17 @@ p <- 0.05
 #may need to adjust scale for y-axis on line 
 
 #define colours for each cell line - leave blank if not presenting all 4 cell lines
-Colour_1_exp <- "#A6BDDB" #sets colour for expansion phase new cell line
-Colour_1_ss <- "#3690C0"  #sets colour for steady state phase new cell line
+Colour_1_exp <- "#FA9FB5" #sets colour for expansion phase reference line
+Colour_1_ss <- "#DD3497"  #sets colour for steady state phase reference line
 
-Colour_2_exp <- "#FA9FB5" #sets colour for expansion phase new reference_line
-Colour_2_ss <- "#DD3497"  #sets colour for steady state phase new reference_line
+Colour_2_exp <- "#A6BDDB" #sets colour for expansion phase new cell line
+Colour_2_ss <- "#3690C0"  #sets colour for steady state phase new cell line
 
 Colour_3_exp <- "#FEB24C" #sets colour for expansion phase new cell_line_3
 Colour_3_ss <- "#FC4E2A"  #sets colour for steady state phase new cell_line_3
 
 Colour_4_exp <- "#ADDD8E" #sets colour for expansion phase new cell_line_3
 Colour_4_ss <- "#41AB5D"  #sets colour for steady state phase new cell_line_3
-# Colour_2 <- c("#A6BDDB", "#3690C0") #sets colour for reference_line
-# Colour_3 <- c("#FEB24C", "#FC4E2A") #sets colour for cell_line_3
-# Colour_4 <- c("#ADDD8E", "#41AB5D") #sets colour for cell_line_4
 
 
 #set name of how cell lines should be presented in the plot - ensures name consistency with other papers
@@ -77,15 +78,19 @@ y_axis <- bquote("Xist"~"Territory"~"Volume"~"["*mu*"m"^"3"*"]")
 #STEP 1: load Cloud_Volume data for plotting
 
 #define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
-File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
+File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
 
-#open Cloud_Volume data for all existing cell lines
-if (file.exists(paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Cloud_Volume_Compile.csv", sep="/"))) { 
-  All_Cloud_Volume_Data <- read_csv(paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Cloud_Volume_Compile.csv", sep="/"))
-} else{
-  stop("New_All_Cell_Lines_Cloud_Volume_Compile.csv file does not exist in directory
-       - check File_Path input")
-}
+#set file path to the location of the all cloud volume files 
+Input_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", "All_Cell_Lines", sep="/")
+
+#stores name of all Cloud_Volume_Compile.csv files , in the directory, into a vector
+Files <- list.files(path = Input_Path, pattern = "Cloud_Volume_Compile.csv", full.names  = TRUE)   
+
+#creates a list containing the Cloud_Volume_Compile.csv files
+File_List <- lapply(Files, read_csv, col_types="cccncn")
+
+#concatenates all the individual Cloud_Volume_Compile.csv files into 1 tibble
+All_Cloud_Volume_Data <- bind_rows(File_List)
 
 
 #checks if new cell line data is stored in the dataframe containing all Cloud_Volume data
@@ -127,14 +132,6 @@ Present_Data$Key <- factor(Present_Data$Key,
 #################################################################################
 #STEP 3: PLOT THE DATA
 
-#create theme for plots - defines font, text size etc
-theme <- theme(plot.title = element_text(family = "Calibri", face = "bold", size = (20)),
-               legend.title = element_text(family = "Calibri", size = (16)), 
-               legend.text = element_text(family = "Calibri", size = (14)), 
-               axis.title = element_text(family = "Calibri", face = "bold", size = (16)),
-               axis.text = element_text(family = "Calibri", face = "bold", size = (12)),
-               strip.text.x = element_text(family = "Calibri", size = (16)))
-
 #sets name of labels for each cell line
 Labels = c(Cell_Line = Name_1,
            Cell_Line = Name_2,
@@ -156,8 +153,7 @@ box_plot <- ggplot(Present_Data, aes(x= Phase, y = Cloud_Volume, fill = Key)) + 
   coord_cartesian(ylim = c((Min_y-10),(1200) )) +                               #adjusts scale so whiskers don't touch the end graph 
   labs(title = Title,                                                           #sets name of the axes
        x = x_axis,
-       y = y_axis) +                                          
-  theme                                                                         #adds the theme which defines the font, text size etc
+       y = y_axis) 
 
 #view the box plot
 box_plot
@@ -197,11 +193,11 @@ p_values <- tibble(a, b, c) %>%
 
 if (Stat_Diff$p.value < p) {
   if (Diff_Less$p.value < Diff_More$p.value){
-    outcome_1 <- paste("Overall, the new cell line has statistically bigger clouds than the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, the new cell line (", New_Line_Name,") has statistically bigger clouds than the", Refernece_Line, sep=" ")
   } else {
-    outcome_1 <- paste("Overall, the new cell line has statistically smaller clouds than the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, the new cell line (", New_Line_Name,") has statistically smaller clouds than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_1 <- paste("Overall, there is no statistical difference in cloud size between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, there is no statistical difference in cloud size between the new cell line (", New_Line_Name,") and the", Refernece_Line, sep=" ")
   }
 
 #is there a general difference during the expansion phase between the data sets?
@@ -234,11 +230,11 @@ Exp_p_values <- tibble(e, f, g) %>%
 
 if (Exp_Stat_Diff$p.value < p) {
   if (Exp_Diff_Less$p.value < Exp_Diff_More$p.value){
-    outcome_2 <- paste("The new cell line has statistically bigger clouds, during the expansion phase, than the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically bigger clouds, during the expansion phase, than the", Refernece_Line, sep=" ")
   } else {
-    outcome_2 <- paste("The new cell line has statistically smaller clouds, during the expansion phase, than the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically smaller clouds, during the expansion phase, than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_2 <- paste("There is no statistical difference in cloud size, during the expansion phase, between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("There is no statistical difference in cloud size, during the expansion phase, between the new cell line (", New_Line_Name,") and the", Refernece_Line, sep=" ")
   }
 
 #is there a general difference during the Steady_State phase between the data sets?
@@ -271,11 +267,11 @@ SS_p_values <- tibble(h, i, j) %>%
 
 if (SS_Stat_Diff$p.value < p) {
   if (SS_Diff_Less$p.value < SS_Diff_More$p.value){
-    outcome_3 <- paste("The new cell line has statistically bigger clouds, during the Steady_State phase, than the", Refernece_Line, sep=" ")
+    outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically bigger clouds, during the Steady_State phase, than the", Refernece_Line, sep=" ")
   } else {
-    outcome_3 <- paste("The new cell line has statistically smaller clouds, during the Steady_State phase, than the", Refernece_Line, sep=" ")
+    outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically smaller clouds, during the Steady_State phase, than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_3 <- paste("There is no statistical difference in cloud size, during the Steady_State phase, between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_3 <- paste("There is no statistical difference in cloud size, during the Steady_State phase, between the new cell line (", New_Line_Name,") and the", Refernece_Line, sep=" ")
   }
 
 #combine all p values
@@ -290,7 +286,7 @@ write_csv(p_values, paste(Save_Path, paste(New_Line_Name, "_Cloud_Volume_Wilcox_
 
 
 #provide outcomes of Wilcoxon tests
-if (Exp_Stat_Diff$p.value < p) {
+if (Stat_Diff$p.value < p) {
   print(outcome_1)
   print(outcome_2)
   print(outcome_3)

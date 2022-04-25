@@ -1,37 +1,42 @@
 #############################################################################################################################################
 #SCRIPT CREATES VIOLIN PLOT FOR NNA AND PREFORMS WILCOX STAT TEST
-#############################################################################################################################################
+#please email Holly Roach at hmroach@hotmail.co.uk if you have any questions
+#################################################################################
+
 #load libraries 
-
-#run these two lines on their own first
-library(extrafont)
-#font_import() 
-
-#finish running rest of the script from this line
-loadfonts(device = "win") #loads windows fonts to use
 library(tidyverse)
 library(RColorBrewer)
 library(stringr)
+library(tcltk)
 
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 ################################################################################
-#USER INPUT REQUIRED - check lines 21-63
+#USER INPUT REQUIRED - check lines 22-74
 
 #define type of cells used in experiment
 Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
 
-#define which dataset to present - either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics"
-Data_Set <- "nascent_Xist_dynamics"
-
 #######################
 #SELECT DATA TO PRESENT
 
-#set name of new cell line, and 1 other to present in the plot
+#set name of new cell line, and up to 3 others to present in the plot
 #all names should be spelled the same as file names within the directory
 #can leave names empty if don't want to present them all
-New_Line_Name <- "Mettl3_dTAG"       
+New_Line_Name <- "Test"       
 
 Refernece_Line <- "WT"        #reference_line will be used to perform stats test with
+
+#define which dataset you want to present 
+New_Line_Data <- "Turnover" #should be "Turnover" or "Dynamic"
+Ref_Line_Data <- "Dynamic" #should be "Turnover" or "Dynamic"
 
 #define the threshold used to determine a significant result during wilcoxon test
 p <- 0.05
@@ -68,15 +73,19 @@ y_axis <- "Distance to Nearest Neighbour [nm]"
 #STEP 1: load NNA data for plotting
 
 #define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
-File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
+File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
 
-#open NNA data for all existing cell lines
-if (file.exists(paste(File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines_Merged", "New_All_Cell_Lines_NNA_Compile.csv", sep="/"))) { 
-  All_NNA_Data <- read_csv(paste(File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines_Merged", "New_All_Cell_Lines_NNA_Compile.csv", sep="/"))
-} else{
-  stop("New_All_Cell_Lines_NNA_Compile.csv file does not exist in directory
-       - check File_Path input")
-}
+#set file path to the location of the all Density files 
+Input_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines", sep="/")
+
+#stores name of all Nearest_Neighbour_Compile.csv files , in the directory, into a vector
+Files <- list.files(path = Input_Path, pattern = "Nearest_Neighbour_Compile.csv", full.names  = TRUE)   
+
+#creates a list containing the Nearest_Neighbour_Compile.csv files
+File_List <- lapply(Files, read_csv, col_types="cccncn")
+
+#concatenates all the individual Nearest_Neighbour_Compile.csv files into 1 tibble
+All_NNA_Data <- bind_rows(File_List)
 
 
 #checks if new cell line data is stored in the dataframe containing all NNA data
@@ -91,18 +100,24 @@ if (any(All_NNA_Data$Cell_Line == New_Line_Name)) {
 #STEP 2: SELECT WHICH DATA TO PRESENT IN THE PLOT
 #ultimately will present 2 sets of violin plots
 
-#ensures naming consistency with other papers
-All_NNA_Data <- All_NNA_Data%>%               
-  mutate(Phase = case_when(Phase == "EdU" ~ "EdU",                                  
+#select new cell line data to present
+Present_New <- All_NNA_Data %>% 
+  filter(Cell_Line == New_Line_Name) %>% 
+  filter(Data_Set == New_Line_Data)
+
+#select new cell line data to present
+Present_Ref <- All_NNA_Data %>% 
+  filter(Cell_Line == Refernece_Line) %>% 
+  filter(Data_Set == Ref_Line_Data)
+
+#combine ref and new line data in order to present together
+Present_Data <- bind_rows(Present_New, Present_Ref) %>%               
+  mutate(Phase = case_when(Phase == "EdU" ~ "EdU",                        #ensures naming consistency with other papers                      
                            Phase == "Initiation" ~ "Expansion",
                            Phase == "Maintenance" ~ "Steady_State",
                            Phase == "random_sample" ~ "Random",)) %>%
-  mutate(Key = paste(Phase, Cell_Line, sep="_"))                                      #creates variable to base colour coding in plot
+  mutate(Key = paste(Phase, Cell_Line, sep="_"))                          #creates variable to base colour coding in plot
 
-
-Present_Data <- All_NNA_Data %>%
-  filter(Cell_Line %in%
-           c(Refernece_Line, New_Line_Name))   #select which cell lines to present
 
 #order data to be present in violin plot
 Present_Data$Key <- factor(Present_Data$Key, 
@@ -126,14 +141,6 @@ Present_Data$Phase <- factor(Present_Data$Phase,
 #######################################################################################
 #STEP 3: plot violin plots which compare the NNA Data for the chosen cell line
 
-#create theme for plots - defines font, text size etc
-theme <- theme(plot.title = element_text(family = "Calibri", face = "bold", size = (20)),
-               legend.title = element_text(family = "Calibri", size = (16)), 
-               legend.text = element_text(family = "Calibri", size = (14)), 
-               axis.title = element_text(family = "Calibri", face = "bold", size = (16)),
-               axis.text = element_text(family = "Calibri", face = "bold", size = (12)),
-               strip.text.x = element_text(family = "Calibri", size = (16)))
-
 #sets name of labels for each cell line
 Labels = c(Cell_Line = Name_1,
            Cell_Line = Name_2)
@@ -150,8 +157,7 @@ NNA_plot <- ggplot(Present_Data, aes(x = Phase, y = Distance, fill = Key)) +    
   geom_boxplot(width=0.1, outlier.shape = NA, aes(fill = Key)) +                #adds box plot over the violin plots
   labs(title = Title,                                                           #sets name of the axes
        x = x_axis,
-       y = y_axis) + 
-  theme                                                                         #adds the theme which defines the font, text size etc
+       y = y_axis) 
 
 #view violin plot
 NNA_plot
@@ -176,18 +182,18 @@ Wilcox <- filter(All_NNA_Data, Cell_Line == New_Line_Name)
 
 #is there a general difference in distances recorded between the data sets?
 Edu_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                         Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance)
+                         Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
 Edu_Exp_Stat_Diff$p.value #p = 1 suggests a statistical difference / p nearly 0 suggests no statistical difference
 
 
 #if there is a difference in distance, is it statistically less? 
 Edu_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                 Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance, alternative = "less")
+                 Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
 Edu_Exp_Diff_Less$p.value #p = 1 suggests new cell line lower distances than EdU 
 
 #if there is a difference in distance, is it statistically Greater?
 Edu_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                 Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance, alternative = "greater")
+                 Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
 Edu_Exp_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than EdU
 
 #record  EdU p values in table
@@ -218,19 +224,19 @@ if (Edu_Exp_Stat_Diff$p.value < p) {
 #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE Expansion DATA AND INTERNAL RANDOM CONTROL?
 
 #is there a general difference in distances recorded between the data sets?
-Random_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="Random"),]$Distance,
-                             Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance)
+Random_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                             Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
 Random_Exp_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
 
 
 #if there is a difference in distance, is it statistically less? 
-Random_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="Random"),]$Distance,
-                             Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance, alternative = "less")
+Random_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                             Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
 Random_Exp_Diff_Less$p.value #p = 1 suggests new cell line lower distances than Random 
 
 #if there is a difference in distance, is it statistically Greater?
-Random_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="Random"),]$Distance,
-                             Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance, alternative = "greater")
+Random_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                             Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
 Random_Exp_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than Random
 
 #record  Random p values in table
@@ -262,18 +268,18 @@ if (Random_Exp_Stat_Diff$p.value < p) {
 
 #is there a general difference in distances recorded between the data sets?
 Edu_SS_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                                 Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance)
+                                 Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance)
 Edu_SS_Stat_Diff$p.value #p = 1 suggests a statistical difference / p nearly 0 suggests no statistical difference
 
 
 #if there is a difference in distance, is it statistically less? 
 Edu_SS_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                                 Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance, alternative = "less")
+                                 Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance, alternative = "less")
 Edu_SS_Diff_Less$p.value #p = 1 suggests new cell line lower distances than EdU 
 
 #if there is a difference in distance, is it statistically Greater?
 Edu_SS_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                                    Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance, alternative = "greater")
+                                    Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance, alternative = "greater")
 Edu_SS_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than EdU
 
 #record  EdU p values in table
@@ -304,19 +310,19 @@ if (Edu_SS_Stat_Diff$p.value < p) {
 #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE Steady_State DATA AND INTERNAL RANDOM CONTROL?
 
 #is there a general difference in distances recorded between the data sets?
-Random_SS_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="Random"),]$Distance,
-                                    Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance)
+Random_SS_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                                    Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance)
 Random_SS_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
 
 
 #if there is a difference in distance, is it statistically less? 
-Random_SS_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="Random"),]$Distance,
-                                    Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance, alternative = "less")
+Random_SS_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                                    Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance, alternative = "less")
 Random_SS_Diff_Less$p.value #p = 1 suggests new cell line lower distances than Random 
 
 #if there is a difference in distance, is it statistically Greater?
-Random_SS_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="Random"),]$Distance,
-                                       Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance, alternative = "greater")
+Random_SS_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                                       Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance, alternative = "greater")
 Random_SS_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than Random
 
 #record  Random p values in table
@@ -348,19 +354,19 @@ if (Random_SS_Stat_Diff$p.value < p) {
 #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE STEADY-STATE AND Steady_State PHASES?
 
 #is there a general difference in distances recorded between the data sets?
-Phase_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance,
-                                Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance)
+Phase_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance,
+                                Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
 Phase_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
 
 
 #if there is a difference in distance, is it statistically less? 
-Phase_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance,
-                                Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance, alternative = "less")
+Phase_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance,
+                                Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
 Phase_Diff_Less$p.value #p = 1 suggests new cell line lower distances than Phase 
 
 #if there is a difference in distance, is it statistically Greater?
-Phase_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="Steady_State"),]$Distance,
-                                Wilcox[which(Wilcox$Phase=="Expansion"),]$Distance, alternative = "greater")
+Phase_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance,
+                                Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
 Phase_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than Phase
 
 #record  Phase p values in table
@@ -393,7 +399,7 @@ NNA_p_Values <- Edu_Exp_p_values %>%
             Phase_p_values)
 
 #save p values
-Save_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, sep="/")
+Save_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, sep="/")
 
 write_csv(p_values, paste(Save_Path, paste(New_Line_Name, "NNA_Wilcox_Test_p_values.csv", sep=""), sep="/"))
 

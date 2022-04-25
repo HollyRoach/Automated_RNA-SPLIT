@@ -1,21 +1,25 @@
 #############################################################################################################################################
 #SCRIPT CREATES BOX PLOT FOR Transcription Dynamics DATA AND PREFORMS WILCOX STAT TEST
-#############################################################################################################################################
+#please email Holly Roach at hmroach@hotmail.co.uk if you have any questions
+#################################################################################
+
 #load libraries 
-
-#run these two lines on their own first
-library(extrafont)
-#font_import() 
-
-#finish running rest of the script from this line
-loadfonts(device = "win") #loads windows fonts to use
 library(tidyverse)
 library(RColorBrewer)
 library(stringr)
+library(tcltk)
 
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 ################################################################################
-#USER INPUT REQUIRED - check lines 21-71
+#USER INPUT REQUIRED - check lines 22-74
 
 #define type of cells used in experiment
 Cell_Type <- "mESCs"                     #either "mESCs" or "NPCs"
@@ -34,6 +38,9 @@ Cell_Line_3 <- "Ciz1_KO"
 
 Cell_Line_4 <- "SPEN_RRM_del"  
 
+#select which time points to present
+Timepoints <- c("20", "40", "60")
+
 #define the threshold used to determine a significant result during wilcoxon test
 p <- 0.05
 
@@ -43,12 +50,9 @@ p <- 0.05
 
 #may need to adjust scale for y-axis on line 
 
-#select which time points to present
-Timepoints <- c("20", "40", "60")
-
 #define colours for each cell line - leave blank if not presenting all 4 cell lines
-Colour_1_exp <- "#FA9FB5" #sets colour for expansion phase new reference_line
-Colour_1_ss <- "#DD3497"  #sets colour for steady state phase new reference_line
+Colour_1_exp <- "#FA9FB5" #sets colour for expansion phase reference line
+Colour_1_ss <- "#DD3497"  #sets colour for steady state phase reference line
 
 Colour_2_exp <- "#A6BDDB" #sets colour for expansion phase new cell line
 Colour_2_ss <- "#3690C0"  #sets colour for steady state phase new cell line
@@ -60,13 +64,13 @@ Colour_4_exp <- "#ADDD8E" #sets colour for expansion phase new cell_line_3
 Colour_4_ss <- "#41AB5D"  #sets colour for steady state phase new cell_line_3
 
 
-
 #set name of how cell lines should be presented in the plot - ensures name consistency with other papers
 #if name contains delta/triangle symbol use - "SPEN^"~Delta*"RRM"
 Name_1 <- bquote("METTL3_FKBP12"^"F36V") #sets name for new cell line
 Name_2 <- bquote("WT")                   #sets name for reference_line
 Name_3 <- bquote("Ciz1_KO")              #sets name for cell_line_3
 Name_4 <- bquote("SPEN"^~Delta*"RRM")    #sets name for cell_line_4
+
 
 #set name of plot titles
 Title <- "Number of New Xist RNPs Over Time"
@@ -78,16 +82,19 @@ y_axis <- "Newly Synthesized Xist Count [no. centroids]"
 #STEP 1: load Transcription_Dynamics data for plotting
 
 #define file path to where "Pulse_Chase_Analysis" is located - this is where the compiled data is stored
-File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
+File_Path <- choose_dir(caption = "Select Pulse_Chase_Analysis folder, where compiled data is stored")
 
-#open Transcription_Dynamics data for all existing cell lines
-if (file.exists(paste(File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Transcription_Dynamics_Compile.csv", sep="/"))) { 
-  All_Transcription_Dynamics_Data <- read_csv(paste(File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines_Merged", "New_All_Cell_Lines_Transcription_Dynamics_Compile.csv", sep="/"))
-} else{
-  stop("New_All_Cell_Lines_Transcription_Dynamics_Compile.csv file does not exist in directory
-       - check File_Path input")
-}
+#set file path to the location of the all Density files 
+Input_Path <- paste(File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines", sep="/")
 
+#stores name of all Transcription_Dynamics_Compile.csv files , in the directory, into a vector
+Files <- list.files(path = Input_Path, pattern = "Transcription_Dynamics_Compile.csv", full.names  = TRUE)   
+
+#creates a list containing the Transcription_Dynamics_Compile.csv files
+File_List <- lapply(Files, read_csv, col_types="ccncn")
+
+#concatenates all the individual Transcription_Dynamics_Compile.csv files into 1 tibble
+All_Transcription_Dynamics_Data <- bind_rows(File_List)
 
 #checks if new cell line data is stored in the dataframe containing all Transcription_Dynamics data
 if (any(All_Transcription_Dynamics_Data$Cell_Line == New_Line_Name)) {
@@ -132,14 +139,6 @@ Present_Data$Time  <- factor(Present_Data$Time,
 #################################################################################
 #STEP 4: PLOT THE DATA
 
-#create theme for plots - defines font, text size etc
-theme <- theme(plot.title = element_text(family = "Calibri", face = "bold", size = (20)),
-               legend.title = element_text(family = "Calibri", size = (16)), 
-               legend.text = element_text(family = "Calibri", size = (14)), 
-               axis.title = element_text(family = "Calibri", face = "bold", size = (16)),
-               axis.text = element_text(family = "Calibri", face = "bold", size = (12)),
-               strip.text.x = element_text(family = "Calibri", size = (16)))
-
 #sets name of labels for each cell line
 Labels = c(Cell_Line = Name_1,
            Cell_Line = Name_2,
@@ -162,8 +161,7 @@ box_plot <- ggplot(Present_Data, aes(x= Time, y = No_Centroids, fill = Key)) + #
   coord_cartesian(ylim = c((Min_y),(90) )) +                                   #adjusts scale so whiskers don't touch the end graph 
   labs(title = Title,                                                          #sets name of the axes
        x = x_axis,
-       y = y_axis) +                                          
-  theme  
+       y = y_axis) 
 
 #view the box plot
 box_plot
@@ -174,41 +172,56 @@ box_plot
 ################################################################################
 #STEP 5: preform Wilcox Test on Data to asses if there is a statistical difference
 
-#is there a difference between the 2 data sets?
-#is there a general difference between the data sets?
-Stat_Diff <- wilcox.test(All_Transcription_Dynamics_Data[which(All_Transcription_Dynamics_Data$Cell_Line==Refernece_Line),]$No_Centroids,
-                         All_Transcription_Dynamics_Data[which(All_Transcription_Dynamics_Data$Cell_Line==New_Line_Name),]$No_Centroids)
-Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+#list of phases
+Phase_List <- c("Initiation", "Maintenance")
+
+#define table to store p-values
+total_p_values <- tibble(Comparision = as.character(),
+                         General_Stat_Diff = as.numeric(),
+                         Diff_Statistically_Less = as.numeric(),
+                         Diff_Statistically_More = as.numeric()) 
 
 
-#if there is a difference, is it statistically less 
-Diff_Less <- wilcox.test(All_Transcription_Dynamics_Data[which(All_Transcription_Dynamics_Data$Cell_Line==Refernece_Line),]$No_Centroids,
-                         All_Transcription_Dynamics_Data[which(All_Transcription_Dynamics_Data$Cell_Line==New_Line_Name),]$No_Centroids, alternative = "less")
-Diff_Less$p.value #p = 1 suggests new cell line less transcription than the WT 
-
-#if there is a difference, is it statistically more
-Diff_More <- wilcox.test(All_Transcription_Dynamics_Data[which(All_Transcription_Dynamics_Data$Cell_Line==Refernece_Line),]$No_Centroids,
-                         All_Transcription_Dynamics_Data[which(All_Transcription_Dynamics_Data$Cell_Line==New_Line_Name),]$No_Centroids, alternative = "greater")
-Diff_More$p.value #p = 1 suggests new cell line has more transcription than the WT
-
-#record p values in table
-a <- Stat_Diff$p.value
-b <- Diff_Less$p.value
-c <- Diff_More$p.value
-p_values <- tibble(a, b, c) %>%
-  transmute(Comparision = paste("Compare_Both_Phases", Refernece_Line , "vs", New_Line_Name, sep='_'),
-            General_Stat_Diff = a,
-            Diff_Statistically_Less = b,
-            Diff_Statistically_More = c) 
-
-if (Stat_Diff$p.value < p) {
-  if (Diff_Less$p.value < Diff_More$p.value ){
-    outcome_1 <- paste("Overall the new cell line has statistically higher trancription rate than the", Refernece_Line, sep=" ")
-  } else {
-    outcome_1 <- paste("Overall the new cell line has statistically lower transcription rate than the", Refernece_Line, sep=" ")
-  }} else {
-    outcome_1 <- paste("Overall there is no statistical difference in transcription rate between the new cell line and the", Refernece_Line, sep=" ")
+#see if there s a statistical difference between each timepoint per phase
+for (phase in Phase_List) {
+  for (time in Timepoints) {
+    
+    #select data to perform stats test on
+    wilcox_data <- All_Transcription_Dynamics_Data %>% 
+      filter(Phase == phase,
+             Time == time)
+    
+    #is there a difference between the 2 data sets?
+    #is there a general difference between the data sets?
+    Stat_Diff <- wilcox.test(wilcox_data[which(wilcox_data$Cell_Line==Refernece_Line),]$No_Centroids,
+                             wilcox_data[which(wilcox_data$Cell_Line==New_Line_Name),]$No_Centroids)
+    Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+    
+    
+    #if there is a difference, is it statistically less 
+    Diff_Less <- wilcox.test(wilcox_data[which(wilcox_data$Cell_Line==Refernece_Line),]$No_Centroids,
+                             wilcox_data[which(wilcox_data$Cell_Line==New_Line_Name),]$No_Centroids, alternative = "less")
+    Diff_Less$p.value #p = 1 suggests new cell line less transcription than the WT 
+    
+    #if there is a difference, is it statistically more
+    Diff_More <- wilcox.test(wilcox_data[which(wilcox_data$Cell_Line==Refernece_Line),]$No_Centroids,
+                             wilcox_data[which(wilcox_data$Cell_Line==New_Line_Name),]$No_Centroids, alternative = "greater")
+    Diff_More$p.value #p = 1 suggests new cell line has more transcription than the WT
+    
+    #record p values into a table
+    a <- Stat_Diff$p.value
+    b <- Diff_Less$p.value
+    c <- Diff_More$p.value
+    p_values <- tibble(a, b, c) %>%
+      transmute(Comparision = paste(phase, time, Refernece_Line , "vs", New_Line_Name, sep='_'),
+                General_Stat_Diff = a,
+                Diff_Statistically_Less = b,
+                Diff_Statistically_More = c) 
+    
+    #add data to total p-values table
+    total_p_values <- bind_rows(total_p_values, p_values)
   }
+}
 
 
 ################################################################################
@@ -239,18 +252,21 @@ e <- Exp_Stat_Diff$p.value
 f <- Exp_Diff_Less$p.value
 g <- Exp_Diff_More$p.value
 Exp_p_values <- tibble(e, f, g) %>%
-  transmute(Comparision = paste("Compare_Both_Phases", Refernece_Line , "vs", New_Line_Name, sep='_'),
+  transmute(Comparision = paste("Overall_Initiation", Refernece_Line , "vs", New_Line_Name, sep='_'),
             General_Stat_Diff = e,
             Diff_Statistically_Less = f,
             Diff_Statistically_More = g) 
 
+#add to total p-value table
+total_p_values <- bind_rows(total_p_values, Exp_p_values)
+
 if (Exp_Stat_Diff$p.value < p) {
   if (Exp_Diff_Less$p.value < Exp_Diff_More$p.value ){
-    outcome_2 <- paste("The new cell line has statistically higher trancription rate during expansion phase than the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, the new cell line has statistically higher trancription rate during expansion phase than the", Refernece_Line, sep=" ")
   } else {
-    outcome_2 <- paste("The new cell line has statistically lower transcription rate during expansion phase than the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, the  new cell line has statistically lower transcription rate during expansion phase than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_2 <- paste("There is no statistical difference in transcription rate during expansion phase between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_1 <- paste("Overall, there is no statistical difference in transcription rate during expansion phase between the new cell line and the", Refernece_Line, sep=" ")
   }
 
 ################################################################################
@@ -281,18 +297,21 @@ h <- SS_Stat_Diff$p.value
 i <- SS_Diff_Less$p.value
 j <- SS_Diff_More$p.value
 SS_p_values <- tibble(h, i, j) %>%
-  transmute(Comparision = paste("Compare_Both_Phases", Refernece_Line , "vs", New_Line_Name, sep='_'),
+  transmute(Comparision = paste("Overall_Maintenance", Refernece_Line , "vs", New_Line_Name, sep='_'),
             General_Stat_Diff = h,
             Diff_Statistically_Less = i,
             Diff_Statistically_More = j) 
 
+#add to total p-value table
+total_p_values <- bind_rows(total_p_values, SS_p_values)
+
 if (SS_Stat_Diff$p.value < p) {
   if (SS_Diff_Less$p.value < SS_Diff_More$p.value ){
-    outcome_3 <- paste("The new cell line has statistically higher trancription rate during steady-state phase than the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("Overall, the new cell line has statistically higher trancription rate during steady-state phase than the", Refernece_Line, sep=" ")
   } else {
-    outcome_3 <- paste("The new cell line has statistically lower transcription rate during steady-state phase than the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("Overall, the new cell line has statistically lower transcription rate during steady-state phase than the", Refernece_Line, sep=" ")
   }} else {
-    outcome_3 <- paste("There is no statistical difference in transcription rate during steady-state phase between the new cell line and the", Refernece_Line, sep=" ")
+    outcome_2 <- paste("Overall, there is no statistical difference in transcription rate during steady-state phase between the new cell line and the", Refernece_Line, sep=" ")
   }
 
 
@@ -329,34 +348,26 @@ New_Line_Name_p_values <- tibble(n, o, q) %>%
             Diff_Statistically_Less = o,
             Diff_Statistically_More = q) 
 
-#compare all p values together
-p_values <- p_values %>%
-  bind_rows(Exp_p_values,
-            SS_p_values,
-            New_Line_Name_p_values) 
+#add to total p-value table
+total_p_values <- bind_rows(total_p_values, New_Line_Name_p_values)
 
 if (New_Line_Name_Stat_Diff$p.value < p) {
   if (New_Line_Name_Diff_Less$p.value < New_Line_Name_Diff_More$p.value ){
-    outcome_4 <- "The new cell line has statistically higher trancription rate during steady-state phase than the expansion phase"
+    outcome_3 <- "Overall, the new cell line has statistically higher trancription rate during steady-state phase than the expansion phase"
   } else {
-    outcome_4 <- "The new cell line has statistically lower transcription rate during steady-state phase than the expansion phase"
+    outcome_3 <- "Overall, the new cell line has statistically lower transcription rate during steady-state phase than the expansion phase"
   }} else {
-    outcome_4 <- "There is no statistical difference in transcription rate during steady-state phase and the expansion phase in the new cell line"
+    outcome_3 <- "Overall, there is no statistical difference in transcription rate during steady-state phase and the expansion phase in the new cell line"
   }
 
 #save p values
 Save_Path <- paste(File_Path, Cell_Type, "Transcription_Dynamics", New_Line_Name, sep="/")
 
-write_csv(p_values, paste(Save_Path, paste(New_Line_Name, "_Transcription_Dynamics_p_values.csv", sep=""), sep="/"))
+write_csv(total_p_values, paste(Save_Path, paste(New_Line_Name, "_Transcription_Dynamics_p_values.csv", sep=""), sep="/"))
 
 
 #provide outcomes of Wilcoxon tests
 
-if (Exp_Stat_Diff$p.value < p) {
-  print(outcome_1)
-  print(outcome_2)
-  print(outcome_3)
-  print(outcome_4)
-} else {
-  print(outcome_1)
-  }
+print(outcome_1)
+print(outcome_2)
+print(outcome_3)
