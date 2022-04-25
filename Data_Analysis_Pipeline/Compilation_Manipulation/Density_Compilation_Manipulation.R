@@ -1,71 +1,108 @@
 ####################################################################################################################
 #SCRIPT COMPILES ALL DATA REQUIRED TO CALACULATE DENSITY
+#please contact Holly Roach at hmroach@hotmail.co.uk if you have any questions
 ####################################################################################################################
-#OUTPUTS: New_Line_Name_Density_Compile.csv and New_All_Cell_Lines_Density_Compile.csv 
+#OUTPUTS: New_Line_Name_Density_Compile.csv 
 #compiles all the Median_nn_dist rows of data for all the C1-C1.csv and C2-C2.csv files into 1 table for the new cell line (New_Line_Name_Density_Compile.csv)
-#adds this newly compiled data to a table containing the density measurements for all existing cell lines (New_All_Cell_Lines_Density_Compile.csv)
-#makes sure tidyverse and stringr packaged have been installed - install.packages("package_name")
+#makes sure tidyverse, stringr and tcltk packaged have been installed - install.packages("package_name")
 
 #load libraries
 library(tidyverse)
 library(stringr)
+library(tcltk)
+
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 ################################################################################
 #USER INPUT REQUIRED
 
 #set name of new cell line - should be spelled the same as folder name within the directory
-New_Line_Name <- "Mettl3_dTAG"           
+#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+New_Line_Name <- "Test"           
 
 #define type of cells used in experiment - either "mESCs" or "NPCs"
 Cell_Type <- "mESCs"
-  
-#creates list of datasets being used for compile - if cell line has stable Xist can include Turnover and Dynamic datasets
-#either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics" or both
-Data_Set_List <- c("nascent_Xist_dynamics",
-                   "Xist_turnover_on_chromatin")
 
-#define time points used for this specific cell line
-#doesn't matter if initiation/maintenance have different time points as long as all time points are included
-Dynamic_Time <- c(10, 20, 30,40, 50, 60)
+#define time points used in both datasets
+#make sure that the lists include all the possible time-points for your data
+#it is ok if the lists contain extra time-points, as these lists are a superset of time points
+#it doesn't matter if initiation/maintenance have different time points
+Dynamic_Time <- c(10, 20, 30, 40, 50, 60)
 Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
-
-#creates list of phases being used for compile
-Phase_List <- c("Initiation", "Maintenance")
-                
-#define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
-Input_File_Path <- choose.dir(default = "", caption = "Select Watershed_Algorithm_Results folder, where raw data is found")
-
-#define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
-Output_File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
 
 
 ################################################################################
-#validate inputs
+#OTHER INPUTS
+#the below inputs should not need changing
+
+#creates list of datasets being used for compile
+Data_Set_List <- c("nascent_Xist_dynamics",
+                   "Xist_turnover_on_chromatin")
+
+#creates list of phases being used for compile
+Phase_List <- c("Initiation", "Maintenance")
+
+#define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
+Input_File_Path <- choose_dir(caption = "Select (open on Mac) Watershed_Algorithm_Results folder, where raw data is found")
+
+#define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
+Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analysis folder, where compiled data will be stored")
+
+
+################################################################################
+#VALIDATE INPUTS
 
 #checks inputted name of new cell line - compares name to REGEX
 if (grepl("\\W", New_Line_Name)) {
-  print(paste("New_Line_Name =", New_Line_Name, sep =" "))
-  stop("Invalid character in name of new cell line (New_Line_Name)",
-       " - must not contain any spaces or symbols")
+  stop(paste("Invalid character in name of new cell line (", New_Line_Name, " - New_Line_Name) - must not contain any spaces or symbols", sep=""))
+}
+
+#checks that Watershed_Algorithm_Results folder exists for new cell line
+if (!dir.exists(paste(Input_File_Path, Cell_Type, New_Line_Name, sep="/"))) {
+  stop(paste("Results folder for new cell line (", New_Line_Name, " - New_Line_Name) does not exist in Watershed_Algorithm_Results folder", sep=""))
 }
 
 #checks name of dataset
-if ("nascent_Xist_dynamics" %in% Data_Set_List |"Xist_turnover_on_chromatin" %in% Data_Set_List) {
-} else {
+if (!("nascent_Xist_dynamics" %in% Data_Set_List |"Xist_turnover_on_chromatin" %in% Data_Set_List)) {
   stop("Invalid names entered in Data_Set_List - must contain either nascent_Xist_dynamics or Xist_turnover_on_chromatin or both")
 }
 
 #checks name of phase
-if ("Initiation" %in% Phase_List |"Maintenance" %in% Phase_List) {
-} else {
+if (!("Initiation" %in% Phase_List |"Maintenance" %in% Phase_List)) {
   stop("Invalid names entered in Phase_List - must contain either Initiation or Maintenance or both")
 }
 
 #checks name of cell type
-stopifnot((Cell_Type == "mESCs" | Cell_Type == "NPCs"))
-if (Cell_Type == "mESCs" | Cell_Type == "NPCs") {
-} else {
+if (!(Cell_Type == "mESCs" | Cell_Type == "NPCs")) {
   stop("Invalid name entered in Cell_Type - must be mESCs or NPCs")
+}
+
+#checks correct folder has been selected for input file path
+if (!(str_sub(Input_File_Path, -27, -1) == "Watershed_Algorithm_Results")) {
+  stop("Watershed_Algorithm_Results folder not selected for Input_File_Path")
+}
+
+#checks correct folder has been selected for output file path
+if (!(str_sub(Output_File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
+  stop("Pulse_Chase_Analysis folder not selected for Output_File_Path")
+}
+
+#checks that user has permissions to read and write files in Watershed_Algorithm_Results folder
+if (!(file.access(Input_File_Path, 2) == 0 && file.access(Input_File_Path, 4) == 0 )) {
+  stop("Invalid file permissions for Watershed_Algorithm_Results folder - check in folders properties that you have permission to read&write")
+}
+
+#checks that user has permissions to read and write files in Pulse_Chase_Analysis folder
+if (!(file.access(Output_File_Path, 2) == 0 && file.access(Output_File_Path, 4) == 0 )) {
+  stop("Invalid file permissions for Pulse_Chase_Analysis folder - check in folders properties that you have permission to read&write")
 }
 
 
@@ -142,7 +179,7 @@ for (Data_Set in Data_Set_List) {
     
     #add a column to Density_Compiled which contains the name of the cloud the Raw_Data file corresponds to
     Density_Compiled<- Density_Compiled %>%
-      mutate(Cloud_Name = str_sub(File_Path, -44, -35))  #indexes used to extract name of cloud from the File_Path (constant in all data sets)
+      mutate(Cloud_Name = str_extract(File_Path, r"(\d{0,2}_Cloud\-\d{1,3})")) #extracts the cloud name from the File_path based on XX_Cloud-XX pattern
     
     #opens up raw data stored in Raw_Data column
     unnested_Density <- unnest(Density_Compiled, "Raw_Data")
@@ -167,47 +204,18 @@ for (Data_Set in Data_Set_List) {
 }
 
 ################################################################################
-#load table for data that exists for all other cell lines
-
-#create file path to location of data for all other cell lines
-Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Density", "All_Cell_Lines_Merged", sep="/")
-
-#opens either template or table containing density data for all other cell lines
-if (file.exists(paste(Other_Data_Path, "New_All_Cell_Lines_Density_Compile.csv", sep="/"))) { 
-  Other_Cell_Lines <- read_csv(paste(Other_Data_Path, "New_All_Cell_Lines_Density_Compile.csv", sep="/"))          #contains Density data for other cell lines
-} else{
-  Other_Cell_Lines <- read_csv(paste(Other_Data_Path, "TEMPLATE_Density_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
-}
-
-################################################################################
-#add new cell line data to other existing cloud volume data
-
-if (any(Other_Cell_Lines$Cell_Line == New_Line_Name)) {
-  warning("This cell line already exists in Main Dataframe")
-  All_Data <- Other_Cell_Lines
-} else {
-  All_Data <- Other_Cell_Lines %>%
-    bind_rows(New_Cell_Line)
-} 
-
-################################################################################
 #save tables
 
-#create file path to save data just for new cell line
-Save_Path_1 <- paste(Output_File_Path, Cell_Type, "Density", New_Line_Name, sep="/")
+#if folder for new cell line does not exit, create folder to save density data
+save_path <- paste(Output_File_Path, Cell_Type, "Density", New_Line_Name, sep="/")
+dir.create(save_path)
 
-#create name of file which contains only the new cell line data
-File_Name_1 <- paste(New_Line_Name, "Density_Compile.csv", sep="_")
+#define file path to location of data for all other cell lines
+Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Density", "All_Cell_Lines", sep="/")
 
-#save data for new cell line
-write_csv(New_Cell_Line, paste(Save_Path_1, File_Name_1, sep="/"))
+#save data in both locations
+File_Name <- paste(New_Line_Name, "Density_Compile.csv", sep="_")
 
+write_csv(New_Cell_Line, paste(save_path, File_Name, sep="/"))
+write_csv(New_Cell_Line, paste(Other_Data_Path, File_Name, sep="/"))
 
-#create file path to save the new cell line data added to other cell line data
-Save_Path_2 <- Other_Data_Path
-
-#create name of file which contains all cell line data
-File_Name_2 <- "New_All_Cell_Lines_Density_Compile.csv"
-
-#save/update data for all cell lines
-write_csv(All_Data, paste(Save_Path_2, File_Name_2, sep="/"))

@@ -1,5 +1,6 @@
 ####################################################################################################################
 #SCRIPT COMPILES C1/C2-CENTROIDS AND CALCULATES TOTAL MOLECULE COUNT, TURNOVER AND TRANSCRIPTION DYNAMICS
+#please contact Holly Roach at hmroach@hotmail.co.uk if you have any questions
 ####################################################################################################################
 #OUTPUTS: New_Line_Name_Molecule_Count/Turnover/Transcription_Dynamics_Compile.csv
 #compiles all data from the C1-Centroids.csv and C2-Centroids.csv files into 1 table for the new cell line (New_Line_Name_Centroids_Compile.csv)
@@ -14,7 +15,7 @@ library(tidyverse)
 library(stringr)
 library(tcltk)
 
-#create function to replace choose.dir
+#create function to replace choose.dir so that it is compatible with mac OS
 choose_dir <- function(caption = 'Select data directory') {
   if (exists('utils::choose.dir')) {
     choose.dir(caption = caption)
@@ -27,19 +28,28 @@ choose_dir <- function(caption = 'Select data directory') {
 #USER INPUT REQUIRED
 
 #set name of new cell line - should be spelled the same as folder name within the directory
+#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
 New_Line_Name <- "Test"           
 
 #define type of cells used in experiment - either "mESCs" or "NPCs"
 Cell_Type <- "mESCs"
 
-#creates list of datasets being used for compile - if cell line has stable Xist can include Turnover and Dynamic datasets
+#define time points used in both datasets
+#make sure that the lists include all the possible time-points for your data
+#it is ok if the lists contain extra time-points, as these lists are a superset of time points
+#it doesn't matter if initiation/maintenance have different time points
+Dynamic_Time <- c(10, 20, 30, 40, 50, 60)
+Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
+
+
+################################################################################
+#OTHER INPUTS
+#the below inputs should not need changing
+
+#creates list of datasets being used for compile
 Data_Set_List <- c("nascent_Xist_dynamics",
                    "Xist_turnover_on_chromatin")
-
-#define time points used in both datasets
-#doesn't matter if initiation/maintenance have different time points as long as all time points are included
-Dynamic_Time <- c(10, 20, 30,40, 50, 60)
-Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
 
 #creates list of phases being used for compile
 Phase_List <- c("Initiation", "Maintenance")
@@ -52,47 +62,52 @@ Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analy
 
 
 ################################################################################
-#validate inputs
+#VALIDATE INPUTS
 
 #checks inputted name of new cell line - compares name to REGEX
 if (grepl("\\W", New_Line_Name)) {
-  print(paste("New_Line_Name =", New_Line_Name, sep =" "))
-  stop("Invalid character in name of new cell line (New_Line_Name)",
-       " - must not contain any spaces or symbols")
+  stop(paste("Invalid character in name of new cell line (", New_Line_Name, " - New_Line_Name) - must not contain any spaces or symbols", sep=""))
+}
+
+#checks that Watershed_Algorithm_Results folder exists for new cell line
+if (!dir.exists(paste(Input_File_Path, Cell_Type, New_Line_Name, sep="/"))) {
+  stop(paste("Results folder for new cell line (", New_Line_Name, " - New_Line_Name) does not exist in Watershed_Algorithm_Results folder", sep=""))
 }
 
 #checks name of dataset
-if ("nascent_Xist_dynamics" %in% Data_Set_List |"Xist_turnover_on_chromatin" %in% Data_Set_List) {
-} else {
+if (!("nascent_Xist_dynamics" %in% Data_Set_List |"Xist_turnover_on_chromatin" %in% Data_Set_List)) {
   stop("Invalid names entered in Data_Set_List - must contain either nascent_Xist_dynamics or Xist_turnover_on_chromatin or both")
 }
 
 #checks name of phase
-if ("Initiation" %in% Phase_List |"Maintenance" %in% Phase_List) {
-} else {
+if (!("Initiation" %in% Phase_List |"Maintenance" %in% Phase_List)) {
   stop("Invalid names entered in Phase_List - must contain either Initiation or Maintenance or both")
 }
 
 #checks name of cell type
-stopifnot((Cell_Type == "mESCs" | Cell_Type == "NPCs"))
-if (Cell_Type == "mESCs" | Cell_Type == "NPCs") {
-} else {
+if (!(Cell_Type == "mESCs" | Cell_Type == "NPCs")) {
   stop("Invalid name entered in Cell_Type - must be mESCs or NPCs")
 }
 
 #checks correct folder has been selected for input file path
-if (str_sub(Input_File_Path, -27, -1) == "Watershed_Algorithm_Results") {
-} else {
+if (!(str_sub(Input_File_Path, -27, -1) == "Watershed_Algorithm_Results")) {
   stop("Watershed_Algorithm_Results folder not selected for Input_File_Path")
 }
 
 #checks correct folder has been selected for output file path
-if (str_sub(Output_File_Path, -20, -1) == "Pulse_Chase_Analysis") {
-} else {
+if (!(str_sub(Output_File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
   stop("Pulse_Chase_Analysis folder not selected for Output_File_Path")
 }
 
+#checks that user has permissions to read and write files in Watershed_Algorithm_Results folder
+if (!(file.access(Input_File_Path, 2) == 0 && file.access(Input_File_Path, 4) == 0 )) {
+  stop("Invalid file permissions for Watershed_Algorithm_Results folder - check in folders properties that you have permission to read&write")
+}
 
+#checks that user has permissions to read and write files in Pulse_Chase_Analysis folder
+if (!(file.access(Output_File_Path, 2) == 0 && file.access(Output_File_Path, 4) == 0 )) {
+  stop("Invalid file permissions for Pulse_Chase_Analysis folder - check in folders properties that you have permission to read&write")
+}
 
 ################################################################################
 #creates table which will store table for new cell line data
@@ -133,7 +148,7 @@ for (Data_Set in Data_Set_List) {
     
     
     #creates a loop to add all the files for each time point
-    #Loop through all Time points - adds file path to locate CX_CX_NNA raw data to Density_Compiled table
+    #Loop through all Time points - adds file path to locate C1-centroids and C2-centroids raw data to compiled table
     for (point in Time_points) {
       
       #defines file path to the sub directory where raw data is found - use Xist_turnover_on_chromatin or nascent_Xist_dynamics /Initiation or Maintenance
@@ -143,7 +158,7 @@ for (Data_Set in Data_Set_List) {
       tibble_of_files <- tibble(Pulse_1 = list.files(path = path, pattern="_C1-centroids", full.names=TRUE),  #tibble with file paths for C1/2 files with associated Time point
                                 Pulse_2 =  list.files(path = path, pattern="_C2-centroids", full.names=TRUE), #uses full.names so the working directory doesn't need to change
                                 Time = point) %>%                                                            
-        gather('Pulse_1','Pulse_2',key='Pulse',value='File_Path') %>%                                          #combines Pulse_1/2 file columns to make Pulse/File_Path columns to ensure 1 observation per row
+        gather('Pulse_1','Pulse_2',key='Pulse',value='File_Path') %>%                                         #combines Pulse_1/2 file columns to make Pulse/File_Path columns to ensure 1 observation per row
         rename(Pulse = Pulse)
       
       #Join new tibble (tibble_of_files) to compiled_tibble
@@ -159,8 +174,7 @@ for (Data_Set in Data_Set_List) {
     
     #add a column to compiled_tibble which contains the name of the cloud the Raw_Data file corresponds to
     compiled_tibble<- compiled_tibble %>%
-      # mutate(Cloud_Name = str_sub(File_Path, -47, -38))  #indexes used to extract name of cloud from the File_Path (constant in all data sets)
-      mutate(Cloud_Name = str_extract(File_Path, r"(\d{0,2}_Cloud\-\d)"))
+     mutate(Cloud_Name = str_extract(File_Path, r"(\d{0,2}_Cloud\-\d{1,3})")) #extracts the cloud name from the File_path
     
     #creates new tibble (compiled_Pulse_1_and_2_Centroids) - removes columns that are not useful (eg File_Path, Raw_Data etc)
     Pulse_1_and_2_Centroids_compile <- compiled_tibble %>%
@@ -175,29 +189,23 @@ for (Data_Set in Data_Set_List) {
     #need to unnest the list-column containing the number of centroids
     Pulse_1_and_2_Centroids_compile <- unnest(Pulse_1_and_2_Centroids_compile, "No_Centroids") 
     
+    #add data for this time point, phase and dataset into a final table (New_Cell_Line)
     New_Cell_Line <- bind_rows(New_Cell_Line, Pulse_1_and_2_Centroids_compile)
   }  
 }
 
-#create file path to location of data for all other cell lines
-Cen_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Turnover", "All_Cell_Lines_Merged", sep="/")
+#if folder for new cell line does not exit, create folder to save centroid data
+Cen_path <- paste(Output_File_Path, Cell_Type, "Centroids", New_Line_Name, sep="/")
+dir.create(Cen_path)
 
-#opens either template or table containing density data for all other cell lines
-if (file.exists(paste(Cen_Other_Data_Path, "New_All_Cell_Lines_Centroids_Compile.csv", sep="/"))) { 
-  Cen_Other_Cell_Lines <- read_csv(paste(Cen_Other_Data_Path, "New_All_Cell_Lines_Centroids_Compile.csv", sep="/"))          #contains Density data for other cell lines
-} else{
-  Cen_Other_Cell_Lines <- read_csv(paste(Cen_Other_Data_Path, "TEMPLATE_Centroids_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
-}
+#define file path to location of data for all other cell lines
+Cen_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Centroids", "All_Cell_Lines", sep="/")
 
-#add new cell line data to other existing cloud volume data
-if (any(Cen_Other_Cell_Lines$Cell_Line == New_Line_Name)) {
-  warning("This cell line already exists in Main Dataframe")
-  All_Centroids <- Cen_Other_Cell_Lines
-} else {
-  All_Centroids <- New_Cell_Line %>%
-    select(-Cloud_Name) %>%
-    bind_rows(Cen_Other_Cell_Lines)
-} 
+#save data in both locations
+Cen_File_Name <- paste(New_Line_Name, "Centroids_Compile.csv", sep="_")
+
+write_csv(New_Cell_Line, paste(Cen_path, Cen_File_Name, sep="/"))
+write_csv(New_Cell_Line, paste(Cen_Other_Data_Path, Cen_File_Name, sep="/"))
 
 
 #######################################################################################################
@@ -213,32 +221,32 @@ Pulse_2 <- New_Cell_Line %>%
   filter(Pulse == "Pulse_2") %>%
   rename(P2_No_Centroids = No_Centroids)
 
-#puts pulse 1 and pulse 2 columns in the same tibble --> uses these coulmns to find total count
+#puts pulse 1 and pulse 2 columns in the same tibble
+#uses these columns to find total count
 Total_Count <- Pulse_1 %>%
-  mutate(P2_No_Centroids = Pulse_2$P2_No_Centroids,
-         Total_Centroids = Pulse_1$P1_No_Centroids + Pulse_2$P2_No_Centroids) %>%
-  transmute(Cell_Line = New_Line_Name,                                               
+  full_join(Pulse_2,
+            by= c("Cell_Line", "Data_Set", "Phase", "Time", "Cloud_Name"))%>% 
+  transmute(Cell_Line = New_Line_Name,
+            Data_Set = Data_Set,
             Phase = Phase,
-            Total_Centroids = Total_Centroids) 
+            Time = Time,
+            Cloud_Name = Cloud_Name,
+            P1_No_Centroids = P1_No_Centroids,
+            P2_No_Centroids = P2_No_Centroids,
+            Total_Centroids = P1_No_Centroids + P2_No_Centroids) 
 
-#create file path to location of data for all other cell lines
-TMC_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Molecule_Count", "All_Cell_Lines_Merged", sep="/")
+#if folder for new cell line does not exit, create folder to save molecule count data
+TMC_path <- paste(Output_File_Path, Cell_Type, "Molecule_Count", New_Line_Name, sep="/")
+dir.create(TMC_path)
 
-#opens either template or table containing density data for all other cell lines
-if (file.exists(paste(TMC_Other_Data_Path, "New_All_Cell_Lines_Molecule_Count_Compile.csv", sep="/"))) { 
-  TMC_Other_Cell_Lines <- read_csv(paste(TMC_Other_Data_Path, "New_All_Cell_Lines_Molecule_Count_Compile.csv", sep="/"))          #contains Density data for other cell lines
-} else{
-  TMC_Other_Cell_Lines <- read_csv(paste(TMC_Other_Data_Path, "TEMPLATE_Molecule_Count_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
-}
+#define file path to location of data for all other cell lines
+TMC_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Molecule_Count", "All_Cell_Lines", sep="/")
 
-#add new cell line data to other existing total molecule count data
-if (any(TMC_Other_Cell_Lines$Cell_Line == New_Line_Name)) {
-  warning("This cell line already exists in Main Dataframe")
-  All_Total_Count <- TMC_Other_Cell_Lines
-} else {
-  All_Total_Count <- TMC_Other_Cell_Lines %>%
-    bind_rows(Total_Count)
-} 
+#save total molecule count data in both locations
+TMC_File_Name <- paste(New_Line_Name, "Total_Molecule_Count_Compile.csv", sep="_")
+
+write_csv(Total_Count, paste(TMC_path, TMC_File_Name, sep="/"))
+write_csv(Total_Count, paste(TMC_Other_Data_Path, TMC_File_Name, sep="/"))
 
 
 #######################################################################################################
@@ -256,26 +264,21 @@ Transcription <- New_Cell_Line %>%
   select(Cell_Line = Cell_Line,                 #only need to keep cell line, phase, no_centroid columns
          Phase = Phase,
          Time = Time,
+         Cloud_Name,
          No_Centroids = No_Centroids)
 
-#create file path to location of data for all other cell lines
-Trans_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines_Merged", sep="/")
+#if folder for new cell line does not exit, create folder to save transcription data
+Trans_path <- paste(Output_File_Path, Cell_Type, "Transcription_Dynamics", New_Line_Name, sep="/")
+dir.create(Trans_path)
 
-#opens either template or table containing density data for all other cell lines
-if (file.exists(paste(Trans_Other_Data_Path, "New_All_Cell_Lines_Transcription_Dynamics_Compile.csv", sep="/"))) { 
-  Trans_Other_Cell_Lines <- read_csv(paste(Trans_Other_Data_Path, "New_All_Cell_Lines_Transcription_Dynamics_Compile.csv", sep="/"))          #contains Density data for other cell lines
-} else{
-  Trans_Other_Cell_Lines <- read_csv(paste(Trans_Other_Data_Path, "TEMPLATE_Transcription_Dynamics_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
-}
+#define file path to location of data for all other cell lines
+Trans_Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines", sep="/")
 
-#add new cell line data to other existing transcription dynamics data
-if (any(Trans_Other_Cell_Lines$Cell_Line == New_Line_Name)) {
-  warning("This cell line already exists in Main Dataframe")
-  All_Transcription <- Trans_Other_Cell_Lines
-} else {
-  All_Transcription <- Trans_Other_Cell_Lines %>%
-    bind_rows(Transcription)
-} 
+#save total molecule count data in both locations
+Trans_File_Name <- paste(New_Line_Name, "Transcription_Dynamics_Compile.csv", sep="_")
+
+write_csv(Transcription, paste(Trans_path, Trans_File_Name, sep="/"))
+write_csv(Transcription, paste(Trans_Other_Data_Path, Trans_File_Name, sep="/"))
 
 #######################################################################################################
 #calculate turnover
@@ -294,42 +297,15 @@ Max_C1_Centroids <- max(Turnover$Avg_No_Centroids, na.rm = TRUE) #creates variab
 #normalise C1 No_Centroids using Max_C1_Centroids
 Turnover <- Turnover %>%                                         
   mutate(Normalised_No_Centroids = (No_Centroids/Max_C1_Centroids)*100) %>% #adds a column which normalises No_Centroids based on maximum for C1 data
-  select(-Avg_No_Centroids, -Cloud_Name) %>%
+  select(-Avg_No_Centroids) %>%
   mutate(Data_Set = Data_Name)
 
-#as turnover data is exported to graph pad prism, it does not get added to other cell line data
+#if folder for new cell line does not exit, create folder to save turnover data
+Turn_path <- paste(Output_File_Path, Cell_Type, "Turnover", New_Line_Name, sep="/")
+dir.create(Turn_path)
 
-#######################################################################################################
-#save all data
+#save data in both locations
+Turn_File_Name <- paste(New_Line_Name, "Turnover_Compile.csv", sep="_")
 
-#save centroid data
-Save_Path_1 <- paste(Output_File_Path, Cell_Type, "Turnover", New_Line_Name, sep="/")
+write_csv(Turnover, paste(Turn_path, Turn_File_Name, sep="/"))
 
-#create name of file which contains only the new cell line data
-File_Name_1 <- paste(New_Line_Name, "Centroids_Compile.csv", sep="_")
-
-#save data for new cell line
-write_csv(New_Cell_Line, paste(Save_Path_1, File_Name_1, sep="/"))
-write_csv(All_Centroids, paste(Cen_Other_Data_Path, "New_All_Cell_Lines_Centroids_Compile.csv", sep="/"))
-
-
-#save total molecule count data
-Save_Path_2 <- paste(Output_File_Path, Cell_Type, "Molecule_Count", New_Line_Name, sep="/")
-
-File_Name_2 <- paste(New_Line_Name, "Molecule_Count_Compile.csv", sep="_")
-
-write_csv(Total_Count, paste(Save_Path_2, File_Name_2, sep="/"))
-write_csv(All_Total_Count, paste(TMC_Other_Data_Path, "New_All_Cell_Lines_Molecule_Count_Compile.csv", sep="/"))
-
-#save transcription dynamics data
-Save_Path_3 <- paste(Output_File_Path, Cell_Type, "Transcription_Dynamics", New_Line_Name, sep="/")
-
-File_Name_3 <- paste(New_Line_Name, "Transcription_Dynamics_Compile.csv", sep="_")
-
-write_csv(Transcription, paste(Save_Path_3, File_Name_3, sep="/"))
-write_csv(All_Transcription, paste(Trans_Other_Data_Path, "New_All_Cell_Lines_Transcription_Dynamics_Compile.csv", sep="/"))
-
-#save turnover data
-File_Name_4 <- paste(New_Line_Name, "Turnover_Compile.csv", sep="_")
-
-write_csv(Turnover, paste(Save_Path_1, File_Name_4, sep="/"))

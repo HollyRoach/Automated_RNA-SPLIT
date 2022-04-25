@@ -1,70 +1,138 @@
 ####################################################################################################################
-#SCRIPT CREATES NNA_2_to_1_Compile (NNA = nearest neighbor analysis)
+#SCRIPT COMPILES ALL DATA REQUIRED TO PERFORM NNA (NNA = nearest neighbor analysis)
+#please contact Holly Roach at hmroach@hotmail.co.uk if you have any questions
 ####################################################################################################################
-#OUTPUTS: New_Line_Name_NNA_Compile.csv and New_All_Cell_Lines_NNA_Compile.csv 
+#OUTPUTS: New_Line_Name_NNA_Compile.csv 
 #compiles all the NN_dist_2to1 rows of data for all the C2-C1.csv files into 1 table for the new cell line (New_Line_Name_NNA_Compile.csv)
-#adds this newly compiled data to a table containing the NNA measurements for all existing cell lines (New_All_Cell_Lines_NNA_Compile.csv)
-#makes sure tidyverse and stringr packaged have been installed - install.packages("package_name")
+#makes sure tidyverse, stringr and tcltk packaged have been installed - install.packages("package_name")
+#IMPORTANT to make sure you have created a folder specific for your new cell line in the Pulse_Chase_Analysis folder
+# --> this folder should contain a nascent_Xist_dynamics and a Xist_turnover_on_chromatin folder
+# --> within each dataset folder, there should be an EdU_Control and Random_Control folder which contain files corresponding to these controls
 
 #load libraries
 library(tidyverse)
 library(stringr)
+library(tcltk)
+
+#create function to replace choose.dir so that it is compatible with mac OS
+choose_dir <- function(caption = 'Select data directory') {
+  if (exists('utils::choose.dir')) {
+    choose.dir(caption = caption)
+  } else {
+    tk_choose.dir(caption = caption)
+  }
+}
 
 ################################################################################
 #USER INPUT REQUIRED
 
 #set name of new cell line - should be spelled the same as folder name within the directory
-New_Line_Name <- "Mettl3_dTAG"           
+#make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
+#eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
+New_Line_Name <- "Test"           
 
 #define type of cells used in experiment - either "mESCs" or "NPCs"
 Cell_Type <- "mESCs"
 
-#creates list of datasets being used for compile - if cell line has stable Xist can include Turnover and Dynamic datasets
-#ONLY USE either "Xist_turnover_on_chromatin" or "nascent_Xist_dynamics" NOT BOTH (as will append the datasets together which is not wanted)
-Data_Set_List <- c("nascent_Xist_dynamics")
-
-#define time points used for this specific cell line
-#doesn't matter if initiation/maintenance have different time points as long as all time points are included
-Dynamic_Time <- c(10, 20, 30,40, 50, 60)
+#define time points used in both datasets
+#make sure that the lists include all the possible time-points for your data
+#it is ok if the lists contain extra time-points, as these lists are a superset of time points
+#it doesn't matter if initiation/maintenance have different time points
+Dynamic_Time <- c(10, 20, 30, 40, 50, 60)
 Turnover_Time <- c(0, 60, 80, 100, 120, 140, 160, 180, 200, 220)
+
+
+################################################################################
+#OTHER INPUTS
+#the below inputs should not need changing
+
+#creates list of datasets being used for compile
+Data_Set_List <- c("nascent_Xist_dynamics",
+                   "Xist_turnover_on_chromatin")
 
 #creates list of phases being used for compile
 Phase_List <- c("Initiation", "Maintenance")
 
 #define file path to where Watershed Algorithm "results" are found - needs to be located in documents due to long file path names
-Input_File_Path <- choose.dir(default = "", caption = "Select Watershed_Algorithm_Results folder, where raw data is found")
+Input_File_Path <- choose_dir(caption = "Select (open on Mac) Watershed_Algorithm_Results folder, where raw data is found")
 
 #define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
-Output_File_Path <- choose.dir(default = "", caption = "Select Pulse_Chase_Analysis folder, where compiled data will be stored")
+Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analysis folder, where compiled data will be stored")
 
 
 ################################################################################
-#validate inputs
+#VALIDATE INPUTS
 
 #checks inputted name of new cell line - compares name to REGEX
 if (grepl("\\W", New_Line_Name)) {
-  print(paste("New_Line_Name =", New_Line_Name, sep =" "))
-  stop("Invalid character in name of new cell line (New_Line_Name)",
-       " - must not contain any spaces or symbols")
+  stop(paste("Invalid character in name of new cell line (", New_Line_Name, " - New_Line_Name) - must not contain any spaces or symbols", sep=""))
+}
+
+#checks that Watershed_Algorithm_Results folder exists for new cell line
+if (!dir.exists(paste(Input_File_Path, Cell_Type, New_Line_Name, sep="/"))) {
+  stop(paste("Results folder for new cell line (", New_Line_Name, " - New_Line_Name) does not exist in Watershed_Algorithm_Results folder", sep=""))
 }
 
 #checks name of dataset
-if ("nascent_Xist_dynamics" %in% Data_Set_List |"Xist_turnover_on_chromatin" %in% Data_Set_List) {
-} else {
-  stop("Invalid names entered in Data_Set_List - must contain either nascent_Xist_dynamics or Xist_turnover_on_chromatin or both")
+if (!("nascent_Xist_dynamics" %in% Data_Set_List |"Xist_turnover_on_chromatin" %in% Data_Set_List)) {
+  stop("Invalid names entered in Data_Set_List - must contain either
+       nascent_Xist_dynamics or Xist_turnover_on_chromatin or both")
 }
 
 #checks name of phase
-if ("Initiation" %in% Phase_List |"Maintenance" %in% Phase_List) {
-} else {
+if (!("Initiation" %in% Phase_List |"Maintenance" %in% Phase_List)) {
   stop("Invalid names entered in Phase_List - must contain either Initiation or Maintenance or both")
 }
 
 #checks name of cell type
-stopifnot((Cell_Type == "mESCs" | Cell_Type == "NPCs"))
-if (Cell_Type == "mESCs" | Cell_Type == "NPCs") {
-} else {
+if (!(Cell_Type == "mESCs" | Cell_Type == "NPCs")) {
   stop("Invalid name entered in Cell_Type - must be mESCs or NPCs")
+}
+
+#checks correct folder has been selected for input file path
+if (!(str_sub(Input_File_Path, -27, -1) == "Watershed_Algorithm_Results")) {
+  stop("Watershed_Algorithm_Results folder not selected for Input_File_Path")
+}
+
+#checks correct folder has been selected for output file path
+if (!(str_sub(Output_File_Path, -20, -1) == "Pulse_Chase_Analysis")) {
+  stop("Pulse_Chase_Analysis folder not selected for Output_File_Path")
+}
+
+#checks that user has permissions to read and write files in Watershed_Algorithm_Results folder
+if (!(file.access(Input_File_Path, 2) == 0 && file.access(Input_File_Path, 4) == 0 )) {
+  stop("Invalid file permissions for Watershed_Algorithm_Results folder - 
+       check in folders properties that you have permission to read&write")
+}
+
+#checks that user has permissions to read and write files in Pulse_Chase_Analysis folder
+if (!(file.access(Output_File_Path, 2) == 0 && file.access(Output_File_Path, 4) == 0 )) {
+  stop("Invalid file permissions for Pulse_Chase_Analysis folder - 
+       check in folders properties that you have permission to read&write")
+}
+
+#checks that Pulse_Chase_Analysis folder contains folder for new cell line
+if (!dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, sep="/"))) {
+  stop(paste("Folder for the new cell line (", New_Line_Name, " - New_Line_Name) does not exist in Pulse_Chase_Analysis folder", sep=""))
+}
+
+#checks that Pulse_Chase_Analysis folder contains subfolders for either dataset for new cell line
+if (!dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, "nascent_Xist_dynamics", sep="/")) 
+    || !dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, "Xist_turnover_on_chromatin", sep="/"))
+    ) {
+  stop(paste("nascent_Xist_dynamics or Xist_turnover_on_chromatin subfolders do not exits for new cell line (", New_Line_Name, " - New_Line_Name) within the Pulse_Chase_Analysis folder", sep=""))
+}
+
+#checks that Pulse_Chase_Analysis folder contains the EdU controls for new cell line
+if (!dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, "nascent_Xist_dynamics", "EdU_Control", sep="/")) 
+    || !dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, "Xist_turnover_on_chromatin", "EdU_Control", sep="/"))) {
+  stop(paste("EdU_Control subfolder does not exist for new cell line (", New_Line_Name, " - New_Line_Name) within the Pulse_Chase_Analysis folder", sep=""))
+}
+
+#checks that Pulse_Chase_Analysis folder contains the random controls for new cell line
+if (!dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, "nascent_Xist_dynamics", "Random_Control", sep="/")) 
+    || !dir.exists(paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, "Xist_turnover_on_chromatin", "Random_Control", sep="/"))) {
+  stop(paste("Random_Control subfolder does not exist for new cell line (", New_Line_Name, " - New_Line_Name) within the Pulse_Chase_Analysis folder", sep=""))
 }
 
 
@@ -126,7 +194,7 @@ for (Data_Set in Data_Set_List) {
     
     #add a column to NNA_Compiled which contains the name of the cloud the Raw_Data file corresponds to
     NNA_Compiled<- NNA_Compiled %>%
-      mutate(Cloud_Name = str_sub(File_Path, -44, -35))  #indexes used to extract name of cloud from the File_Path (constant in all data sets)
+      mutate(Cloud_Name = str_extract(File_Path, r"(\d{0,2}_Cloud\-\d{1,3})")) #extracts the cloud name from the File_path based on XX_Cloud-XX pattern
     
     #opens up raw data stored in Raw_Data column
     unnested_NNA <- unnest(NNA_Compiled, "Raw_Data")
@@ -144,134 +212,89 @@ for (Data_Set in Data_Set_List) {
                 Distance =NN_dist_2to1)
     
     New_Cell_Line <- bind_rows(New_Cell_Line, NNA_2_to_1_Compile)
-  }  
+  }
+
+  
+  #compile data for EdU control
+  #filepath to the location of the file EdU control for new cell line 
+  EdU_path <-paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, "EdU_Control",  sep="/")
+  
+  #store name of all EdU files, for the new cell line, into a vector
+  EdU_Files <- list.files(path = EdU_path, pattern = "EdU_CAL.*csv", full.names  = TRUE)   #all EdU control files have this sub string
+  
+  #creates a list containing the EdU tibble files
+  EdU_List <- lapply(EdU_Files, read_csv)
+  
+  #concatenates all the individual EdU tibbles into 1 tibble
+  EdU_Compile <- bind_rows(EdU_List) %>%
+    filter(volume > 0)                    #removes 1st row of separate EdU table where volume = 0 as x,y,z = 0
+  
+  #transform EdU Compile to be in same format as original data
+  EdU_Compile <- EdU_Compile %>%
+    transmute(Cell_Line = New_Line_Name,
+              Data_Set = Data_Name,
+              Phase = "EdU",
+              Time = NA,
+              Cloud_Name = NA,
+              Distance =NN_dist_2to1)
+  
+  #add EdU control data to all data
+  New_Cell_Line <- bind_rows(New_Cell_Line, EdU_Compile)
+
+  
+  #compile data for random controls
+  #filepath to the location of the file random control for new cell line 
+  Random_path <-paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, "Random_Control",  sep="/")
+  
+  #store name of all Random files, for the new cell line, into a vector
+  Random_Files <- list.files(path = Random_path, pattern = "RNA_SPLIT.*csv", full.names  = TRUE)   #all random control files have this sub string 0 usually use time point = 80/100mins
+  
+  #creates a list containing the Random tibble files
+  Random_List <- lapply(Random_Files, read_csv)
+  
+  #concatenates all the individual Random tibbles into 1 tibble
+  Random_Compile <- bind_rows(Random_List) %>%
+    filter(volume > 0)                    #removes 1st row of separate Random table where volume = 0 as x,y,z = 0
+  
+  #transform Random Compile to be in same format as original data
+  Random_Compile <- Random_Compile %>%
+    transmute(Cell_Line = New_Line_Name,
+              Data_Set = Data_Name,
+              Phase = "random_sample",
+              Time = NA,
+              Cloud_Name = NA,
+              Distance =NN_dist_2to1)
+  
+  #add random control data to all data
+  New_Cell_Line <- bind_rows(New_Cell_Line, Random_Compile)
 }
 
-################################################################################
-#compile data for EdU and Random control
+#separate out data into respective data_sets
+turnover_NNA <- New_Cell_Line %>% 
+  filter(Data_Set == "Turnover")
 
-#loops through all the datasets, phases and time points to collect all the EdU control files
-for (Data_Set in Data_Set_List) {
-  
-  #based on data set being used - defines name of the data
-  if (Data_Set == "nascent_Xist_dynamics") {
-    Data_Name <- "Dynamic"
-  } else {
-    Data_Name <- "Turnover"
-  }
-  
-  for (Phase in Phase_List) {
-    
-        #filepath to the location of the file EdU control for new cell line 
-    EdU_path <-paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, "EdU_Control",  sep="/")
-    
-    #store name of all EdU files, for the new cell line, into a vector
-    EdU_Files <- list.files(path = EdU_path, pattern = "EdU_CAL.*csv", full.names  = TRUE)   #all EdU control files have this sub string
-    
-    #creates a list containing the EdU tibble files
-    EdU_List <- lapply(EdU_Files, read_csv)
-    
-    #concatenates all the individual EdU tibbles into 1 tibble
-    EdU_Compile <- bind_rows(EdU_List) %>%
-      filter(volume > 0)                    #removes 1st row of separate EdU table where volume = 0 as x,y,z = 0
-    
-    #transform EdU Compile to be in same format as original data
-    EdU_Compile <- EdU_Compile %>%
-      transmute(Cell_Line = New_Line_Name,
-                Data_Set = Data_Name,
-                Phase = "EdU",
-                Time = NA,
-                Cloud_Name = NA,
-                Distance =NN_dist_2to1)
-    
-    EdU_Controls <- bind_rows(EdU_Compile)
-  }
-}
-
-#loops through all the datasets, phases and time points to collect all the random control files
-for (Data_Set in Data_Set_List) {
-  
-  #based on data set being used - defines name of the data
-  if (Data_Set == "nascent_Xist_dynamics") {
-    Data_Name <- "Dynamic"
-  } else {
-    Data_Name <- "Turnover"
-  }
-  
-  for (Phase in Phase_List) {
-    
-    #filepath to the location of the file EdU control for new cell line 
-    Random_path <-paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, "Random_Control",  sep="/")
-    
-    #store name of all Random files, for the new cell line, into a vector
-    Random_Files <- list.files(path = Random_path, pattern = "RNA_SPLIT.*csv", full.names  = TRUE)   #all random control files have this sub string 0 usually use time point = 80/100mins
-
-    #creates a list containing the Random tibble files
-    Random_List <- lapply(Random_Files, read_csv)
-    
-    #concatenates all the individual Random tibbles into 1 tibble
-    Random_Compile <- bind_rows(Random_List) %>%
-      filter(volume > 0)                    #removes 1st row of separate Random table where volume = 0 as x,y,z = 0
-    
-    #transform Random Compile to be in same format as original data
-    Random_Compile <- Random_Compile %>%
-      transmute(Cell_Line = New_Line_Name,
-                Phase = "random_sample",
-                Time = NA,
-                Cloud_Name = NA,
-                Distance =NN_dist_2to1)
-    
-    Random_Controls <- bind_rows(Random_Compile, Random_Compile)
-  }
-} 
-
-#add internal control data for the new cell line
-New_Cell_Line <- New_Cell_Line %>% 
-  bind_rows(EdU_Controls,
-            Random_Controls)
-
-################################################################################
-#load table for data that exists for all other cell lines
-
-#create file path to location of data for all other cell lines
-Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines_Merged", sep="/")
-
-#opens either template or table containing density data for all other cell lines
-if (file.exists(paste(Other_Data_Path, "New_All_Cell_Lines_NNA_Compile.csv", sep="/"))) { 
-  Other_Cell_Lines <- read_csv(paste(Other_Data_Path, "New_All_Cell_Lines_NNA_Compile.csv", sep="/"))          #contains Density data for other cell lines
-} else{
-  Other_Cell_Lines <- read_csv(paste(Other_Data_Path, "TEMPLATE_NNA_Compile.csv", sep="/"), col_types = "ccd") #Read in template, sets col types to character and double
-}
-
-#add new cell line data to other existing cloud volume data
-if (any(Other_Cell_Lines$Cell_Line == New_Line_Name)) {
-  warning("This cell line already exists in Main Dataframe")
-  All_Data <- Other_Cell_Lines
-} else {
-  All_Data <- New_Cell_Line %>%
-    select(Cell_Line, Phase, Distance) %>%  #only want to add these rows of data
-    bind_rows(Other_Cell_Lines)
-} 
+dynamic_NNA <- New_Cell_Line %>% 
+  filter(Data_Set == "Dynamic")
 
 
 ################################################################################
-#save tables
+#save data 
 
-#create file path to save data just for new cell line
-Save_Path_1 <- paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, Data_Set, sep="/")
+#define file path to location of folder specific for new cell line
+save_path <- paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", New_Line_Name, sep="/")
 
-#create name of file which contains only the new cell line data
-File_Name_1 <- paste(New_Line_Name, "NNA_Compile.csv", sep="_")
+#define file path to location of data for all other cell lines
+Other_Data_Path <- paste(Output_File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines", sep="/")
 
-#save data for new cell line
-write_csv(New_Cell_Line, paste(Save_Path_1, File_Name_1, sep="/"))
+#define file name for each dataset compile
+File_Name_Dynamic <- paste(New_Line_Name, "Dynamic_Nearest_Neighbour_Compile.csv", sep="_")
+File_Name_Turnover <- paste(New_Line_Name, "Turnover_Nearest_Neighbour_Compile.csv", sep="_")
 
+#save dynamic data in both locations
+write_csv(dynamic_NNA, paste(save_path, File_Name_Dynamic, sep="/"))
+write_csv(dynamic_NNA, paste(Other_Data_Path, File_Name_Dynamic, sep="/"))
 
-#create file path to save the new cell line data added to other cell line data
-Save_Path_2 <- Other_Data_Path
+#save turnover data in both locations
+write_csv(turnover_NNA, paste(save_path, File_Name_Turnover, sep="/"))
+write_csv(turnover_NNA, paste(Other_Data_Path, File_Name_Turnover, sep="/"))
 
-#create name of file which contains all cell line data
-File_Name_2 <- "New_All_Cell_Lines_NNA_Compile.csv"
-
-#save/update data for all cell lines
-write_csv(All_Data, paste(Save_Path_2, File_Name_2, sep="/"))
