@@ -73,33 +73,36 @@ Reference_Line <- read_csv(paste(File_Path, Cell_Type, "Transcription_Dynamics",
 
 New_Cell_Line <- read_csv(paste(File_Path, Cell_Type, "Transcription_Dynamics", "All_Cell_Lines", paste(New_Line_Name, "Transcription_Dynamics_Compile.csv", sep="_"), sep="/"))
 
-
-################################################################################
-#STEP 2: create stat summary for the number of Molecule_Count present in each pulse per phase and time point
-
-#stat summary for reference dynamic initiation dataset
-transcription_stats <- Reference_Line %>% 
-  bind_rows(New_Cell_Line) %>% 
-  group_by(Cell_Line, Phase, Time) %>%                     #group data
-  summarise(n=n(),                                         #find number of data points
-            Mean=mean(No_Centroids),                       #finds the mean 
-            Median = median(No_Centroids),                 #find the median
-            Upper_Quartile = quantile(No_Centroids, 0.75), #find the upper quartile
-            Lower_Quartile = quantile(No_Centroids, 0.25), #find the lower quartile
-            SD=sd(No_Centroids)) %>%                       #finds standard deviation
-  mutate(SE = SD/sqrt(n),                                  #finds standard error of mean
-         CI_95 = SE * qt((1-0.05)/2 + .5, n-1)) %>%        #finds 95% confidence limit
-  ungroup() %>% 
-  arrange(Phase, Time)                                     #orders data
-                                      
-
-################################################################################
-#STEP 3: look at generated stats table --> if any result seems unusual use the New_Cell_Line table to identify the cloud + view in Fiji/ImageJ
-
-################################################################################
-#STEP 4: save summary stats table for new cell line
-
-Save_Path <- paste(File_Path, Cell_Type, "Transcription_Dynamics", New_Line_Name, sep="/")
-File_Name <-paste(New_Line_Name, "Transcription_Dynamics_Summary_Stats.csv", sep="_")
-
-write_csv(transcription_stats, paste(Save_Path, File_Name, sep="/"))
+#only perform analysis if data is present
+if (!nrow(New_Cell_Line) == 0) {
+  
+  ################################################################################
+  #STEP 2: create stat summary for the number of Molecule_Count present in each pulse per phase and time point
+  
+  #stat summary for reference dynamic initiation dataset
+  transcription_stats <- Reference_Line %>% 
+    bind_rows(New_Cell_Line) %>% 
+    group_by(Cell_Line, Phase, Time) %>%                     #group data
+    summarise(n=n(),                                         #find number of data points
+              Mean=mean(No_Centroids),                       #finds the mean 
+              Median = median(No_Centroids),                 #find the median
+              Upper_Quartile = quantile(No_Centroids, 0.75), #find the upper quartile
+              Lower_Quartile = quantile(No_Centroids, 0.25), #find the lower quartile
+              SD=sd(No_Centroids)) %>%                       #finds standard deviation
+    mutate(SE = SD/sqrt(n),                                  #finds standard error of mean
+           CI_95 = SE * qt((1-0.05)/2 + .5, n-1)) %>%        #finds 95% confidence limit
+    ungroup() %>% 
+    arrange(Phase, Time)                                     #orders data
+                                        
+  
+  ################################################################################
+  #STEP 3: look at generated stats table --> if any result seems unusual use the New_Cell_Line table to identify the cloud + view in Fiji/ImageJ
+  
+  ################################################################################
+  #STEP 4: save summary stats table for new cell line
+  
+  Save_Path <- paste(File_Path, Cell_Type, "Transcription_Dynamics", New_Line_Name, sep="/")
+  File_Name <-paste(New_Line_Name, "Transcription_Dynamics_Summary_Stats.csv", sep="_")
+  
+  write_csv(transcription_stats, paste(Save_Path, File_Name, sep="/"))
+}

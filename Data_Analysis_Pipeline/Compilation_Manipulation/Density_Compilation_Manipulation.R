@@ -169,6 +169,12 @@ for (Data_Set in Data_Set_List) {
       
     }
     
+    # Check if any data existed for this phase, if not then quit
+    if (nrow(Density_Compiled) == 0) {
+      print(paste("Warning: No data found for", Data_Set, Phase, "for the new cell line (", New_Line_Name, ")", sep=" "))
+      next
+    }
+    
     #add a column to Density_Compiled which contains the raw CX-CX_NNA.csv file
     Density_Compiled$Raw_Data <- lapply(Density_Compiled$File_Path, read_csv)
     

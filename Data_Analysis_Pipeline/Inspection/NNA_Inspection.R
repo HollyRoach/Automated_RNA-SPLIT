@@ -76,7 +76,7 @@ Input_Path <- paste(File_Path, Cell_Type, "Nearest_Neighbour", "All_Cell_Lines",
 Files <- list.files(path = Input_Path, pattern = "Nearest_Neighbour_Compile.csv", full.names  = TRUE)   
 
 #creates a list containing the Nearest_Neighbour_Compile files
-File_List <- lapply(Files, read_csv)
+File_List <- lapply(Files, read_csv, col_types = "cccncn")
 
 #concatenates all the individual Nearest_Neighbour_Compile files into 1 tibble
 all_nna_data <- bind_rows(File_List)

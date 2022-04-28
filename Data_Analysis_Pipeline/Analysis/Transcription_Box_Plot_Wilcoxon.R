@@ -98,8 +98,7 @@ All_Transcription_Dynamics_Data <- bind_rows(File_List)
 
 #checks if new cell line data is stored in the dataframe containing all Transcription_Dynamics data
 if (!any(All_Transcription_Dynamics_Data$Cell_Line == New_Line_Name)) {
-  stop("This new cell line does not exist in Main Dataframe (All_Transcription_Dynamics_Data)
-       - make sure to run C1_C2-Centroids_Compilation_Manipulation.R ")
+  stop("This new cell line does not exist in Main Dataframe (All_Transcription_Dynamics_Data)")
 }
 
 #################################################################################

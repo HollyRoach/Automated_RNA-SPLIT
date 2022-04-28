@@ -130,7 +130,7 @@ Present_Data$Key <- factor(Present_Data$Key,
 
 Present_Data$Cell_Line <- factor(Present_Data$Cell_Line, 
                                  levels = c(Reference_Line_Name, New_Line_Name), ordered = TRUE,
-                                 labels = c(Name_1, Name_2))
+                                 labels = c(Name_2, Name_1))
 
 Present_Data$Phase <- factor(Present_Data$Phase, 
                            levels = c("EdU", "Expansion", "Steady_State", "Random"), ordered = TRUE) 
@@ -140,8 +140,8 @@ Present_Data$Phase <- factor(Present_Data$Phase,
 #STEP 3: plot violin plots which compare the NNA Data for the chosen cell line
 
 #sets name of labels for each cell line
-Labels = c(Cell_Line = Name_1,
-           Cell_Line = Name_2)
+Labels = c(Cell_Line = Name_2,
+           Cell_Line = Name_1)
 
 #create violin plot
 NNA_plot <- ggplot(Present_Data, aes(x = Phase, y = Distance, fill = Key)) +    #assigns data to be plotted, sets colour based on cell line
@@ -178,91 +178,108 @@ Wilcox <- filter(All_NNA_Data, Cell_Line == New_Line_Name)
 ###################################
 #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE Expansion AND INTERNAL EdU CONTROL?
 
-#is there a general difference in distances recorded between the data sets?
-Edu_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                         Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
-Edu_Exp_Stat_Diff$p.value #p = 1 suggests a statistical difference / p nearly 0 suggests no statistical difference
+#create empty tibbles to hold p-values
+Edu_Exp_p_values <- tibble()
+Edu_SS_p_values <- tibble()
+Random_Exp_p_values <- tibble()
+Random_SS_p_values <- tibble()
+Phase_p_values<- tibble()
 
-
-#if there is a difference in distance, is it statistically less? 
-Edu_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                 Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
-Edu_Exp_Diff_Less$p.value #p = 1 suggests new cell line lower distances than EdU 
-
-#if there is a difference in distance, is it statistically Greater?
-Edu_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
-                 Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
-Edu_Exp_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than EdU
-
-#record  EdU p values in table
-Edu_Exp_Diff <- Edu_Exp_Stat_Diff$p.value
-Edu_Exp_Less <- Edu_Exp_Diff_Less$p.value
-Edu_Exp_Greater <- Edu_Exp_Diff_Greater$p.value
-
-Edu_Exp_p_values <- tibble(Edu_Exp_Diff, Edu_Exp_Less, Edu_Exp_Greater) %>%
-  transmute(Comaprision = "EdU_vs_Exp_Data",
-            General_Stat_Diff = Edu_Exp_Diff,
-            Diff_Statistically_Less = Edu_Exp_Less,
-            Diff_Statistically_Greater = Edu_Exp_Greater) 
-
-#says whether there is a stat difference between the new data and EdU Control
-if (Edu_Exp_Stat_Diff$p.value < p) {
-  if (Edu_Exp_Diff_Less$p.value < Edu_Exp_Diff_Greater$p.value){
-    outcome_1 <- "The new cell line has statistically higher distances in Expansion phase than the EdU Control"
-    outcome_1a <- TRUE
-  }  else {
-    outcome_1 <- "The new cell line has statistically lower distances in Expansion phase than the EdU Control"
-    outcome_1a <- FALSE
-  }}else {
+#only preform stats test if data exists
+if ("Inititation" %in% Wilcox$Phase) {
+  
+  #is there a general difference in distances recorded between the data sets?
+  Edu_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
+                           Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
+  Edu_Exp_Stat_Diff$p.value #p = 1 suggests a statistical difference / p nearly 0 suggests no statistical difference
+  
+  
+  #if there is a difference in distance, is it statistically less? 
+  Edu_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
+                   Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
+  Edu_Exp_Diff_Less$p.value #p = 1 suggests new cell line lower distances than EdU 
+  
+  #if there is a difference in distance, is it statistically Greater?
+  Edu_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
+                   Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
+  Edu_Exp_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than EdU
+  
+  #record  EdU p values in table
+  Edu_Exp_Diff <- Edu_Exp_Stat_Diff$p.value
+  Edu_Exp_Less <- Edu_Exp_Diff_Less$p.value
+  Edu_Exp_Greater <- Edu_Exp_Diff_Greater$p.value
+  
+  Edu_Exp_p_values <- tibble(Edu_Exp_Diff, Edu_Exp_Less, Edu_Exp_Greater) %>%
+    transmute(Comaprision = "EdU_vs_Exp_Data",
+              General_Stat_Diff = Edu_Exp_Diff,
+              Diff_Statistically_Less = Edu_Exp_Less,
+              Diff_Statistically_Greater = Edu_Exp_Greater) 
+  
+  #says whether there is a stat difference between the new data and EdU Control
+  if (Edu_Exp_Stat_Diff$p.value < p) {
+    if (Edu_Exp_Diff_Less$p.value < Edu_Exp_Diff_Greater$p.value){
+      outcome_1 <- "The new cell line has statistically higher distances in Expansion phase than the EdU Control"
+      outcome_1a <- TRUE
+    } else {
+      outcome_1 <- "The new cell line has statistically lower distances in Expansion phase than the EdU Control"
+      outcome_1a <- FALSE
+    }
+  } else {
     outcome_1 <- "There is no statistical difference in distances between the new cell line in Expansion phase and the EdU Control"
     outcome_1a <- FALSE
   }
-
-###################################
-#IS THERE A STATISTICAL DIFFERENCE BETWEEN THE Expansion DATA AND INTERNAL RANDOM CONTROL?
-
-#is there a general difference in distances recorded between the data sets?
-Random_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
-                             Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
-Random_Exp_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
-
-
-#if there is a difference in distance, is it statistically less? 
-Random_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
-                             Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
-Random_Exp_Diff_Less$p.value #p = 1 suggests new cell line lower distances than Random 
-
-#if there is a difference in distance, is it statistically Greater?
-Random_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
-                             Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
-Random_Exp_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than Random
-
-#record  Random p values in table
-Random_Exp_Diff <- Random_Exp_Stat_Diff$p.value
-Random_Exp_Less <- Random_Exp_Diff_Less$p.value
-Random_Exp_Greater <- Random_Exp_Diff_Greater$p.value
-
-Random_Exp_p_values <- tibble(Random_Exp_Diff, Random_Exp_Less, Random_Exp_Greater) %>%
-  transmute(Comaprision = "Random_vs_Expansion_Data",
-            General_Stat_Diff = Random_Exp_Diff,
-            Diff_Statistically_Less = Random_Exp_Less,
-            Diff_Statistically_Greater = Random_Exp_Greater) 
-
-#says whether there is a stat difference between the new expansion data and Random Control
-if (Random_Exp_Stat_Diff$p.value < p) {
-  if (Random_Exp_Diff_Less$p.value < Random_Exp_Diff_Greater$p.value){
-    outcome_2 <- "The new cell line has statistically higher distances in Expansion phase than the Random Control"
-    outcome_2a <- FALSE
-  }  else {
-    outcome_2 <- "The new cell line has statistically lower distances in Expansion phase than the Random Control"
-    outcome_2a <- TRUE
-  }}else {
-    outcome_2 <- "There is no statistical difference in distances between the new cell line in Expansion phase and the Random Control"
-    outcome_2a <- FALSE
-  }
+  
+  
+  ###################################
+  #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE Expansion DATA AND INTERNAL RANDOM CONTROL?
+  
+  
+  #is there a general difference in distances recorded between the data sets?
+  Random_Exp_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                               Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
+  Random_Exp_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+  
+  
+  #if there is a difference in distance, is it statistically less? 
+  Random_Exp_Diff_Less <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                               Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "less")
+  Random_Exp_Diff_Less$p.value #p = 1 suggests new cell line lower distances than Random 
+  
+  #if there is a difference in distance, is it statistically Greater?
+  Random_Exp_Diff_Greater <- wilcox.test(Wilcox[which(Wilcox$Phase=="random_sample"),]$Distance,
+                               Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance, alternative = "greater")
+  Random_Exp_Diff_Greater$p.value #p = 1 suggests new cell line has higher distances than Random
+  
+  #record  Random p values in table
+  Random_Exp_Diff <- Random_Exp_Stat_Diff$p.value
+  Random_Exp_Less <- Random_Exp_Diff_Less$p.value
+  Random_Exp_Greater <- Random_Exp_Diff_Greater$p.value
+  
+  Random_Exp_p_values <- tibble(Random_Exp_Diff, Random_Exp_Less, Random_Exp_Greater) %>%
+    transmute(Comaprision = "Random_vs_Expansion_Data",
+              General_Stat_Diff = Random_Exp_Diff,
+              Diff_Statistically_Less = Random_Exp_Less,
+              Diff_Statistically_Greater = Random_Exp_Greater) 
+  
+  #says whether there is a stat difference between the new expansion data and Random Control
+  if (Random_Exp_Stat_Diff$p.value < p) {
+    if (Random_Exp_Diff_Less$p.value < Random_Exp_Diff_Greater$p.value){
+      outcome_2 <- "The new cell line has statistically higher distances in Expansion phase than the Random Control"
+      outcome_2a <- FALSE
+    }  else {
+      outcome_2 <- "The new cell line has statistically lower distances in Expansion phase than the Random Control"
+      outcome_2a <- TRUE
+    }}else {
+      outcome_2 <- "There is no statistical difference in distances between the new cell line in Expansion phase and the Random Control"
+      outcome_2a <- FALSE
+    }
+}
 
 ###################################
 #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE Steady_State AND INTERNAL EdU CONTROL?
+
+#only preform stats test if data exists
+if ("Maintenance" %in% Wilcox$Phase) {
 
 #is there a general difference in distances recorded between the data sets?
 Edu_SS_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="EdU"),]$Distance,
@@ -346,11 +363,14 @@ if (Random_SS_Stat_Diff$p.value < p) {
     outcome_4 <- "There is no statistical difference in distances between the new cell line in Steady_State phase and the Random Control"
     outcome_4a <- FALSE
   }
-
+}
 
 ###################################
 #IS THERE A STATISTICAL DIFFERENCE BETWEEN THE STEADY-STATE AND Steady_State PHASES?
 
+#only preform stats test if data exists
+if ("Maintenance" %in% Wilcox$Phase & "Initiation" %in% Wilcox$Phase) {
+  
 #is there a general difference in distances recorded between the data sets?
 Phase_Stat_Diff <- wilcox.test(Wilcox[which(Wilcox$Phase=="Maintenance"),]$Distance,
                                 Wilcox[which(Wilcox$Phase=="Initiation"),]$Distance)
@@ -388,6 +408,7 @@ if (Phase_Stat_Diff$p.value < p) {
   }}else {
     outcome_5 <- "There is no statistical difference in distances between the Expansion Phase and Steady-State"
   }
+}
 
 #record all p values for each test and save the results
 NNA_p_Values <- Edu_Exp_p_values %>%
@@ -406,19 +427,26 @@ write_csv(NNA_p_Values, paste(Save_Path, paste(New_Line_Name, "NNA_Wilcox_Test_p
 #return outcomes of the Wilcox Test
 
 #overall states whether coupling has been observed in the new cell line
-if(outcome_1a & outcome_2a) {
-  outcome_6 <- "Suggests that the new cell line has conversved coupling in the expansion phase"
-} else {
-  outcome_6 <- "Suggests that the new cell line disrupts couplingin the expansion phase"
+if ("Maintenance" %in% Wilcox$Phase & "Initiation" %in% Wilcox$Phase) {
+  print(outcome_5)
+}
+
+if ("Initiation" %in% Wilcox$Phase) {
+  if(outcome_1a & outcome_2a) {
+    outcome_6 <- "Suggests that the new cell line has conversved coupling in the expansion phase"
+  } else {
+    outcome_6 <- "Suggests that the new cell line disrupts couplingin the expansion phase"
+  }
+  print(outcome_6)
+}
+
+if ("Maintenance" %in% Wilcox$Phase) {
+  if(outcome_3a & outcome_4a) {
+    outcome_7 <- "Suggests that the new cell line has conversved coupling in the steady-state phase"
+  } else {
+    outcome_7 <- "Suggests that the new cell line disrupts couplingin the steady-state phase"
+  }
+  print(outcome_7)
 }
 
 
-if(outcome_3a & outcome_4a) {
-  outcome_7 <- "Suggests that the new cell line has conversved coupling in the steady-state phase"
-} else {
-  outcome_7 <- "Suggests that the new cell line disrupts couplingin the steady-state phase"
-}
-
-print(outcome_5)
-print(outcome_6)
-print(outcome_7)

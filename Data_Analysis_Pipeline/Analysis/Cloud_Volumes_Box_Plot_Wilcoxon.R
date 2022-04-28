@@ -198,79 +198,97 @@ if (Stat_Diff$p.value < p) {
     outcome_1 <- paste("Overall, there is no statistical difference in cloud size between the new cell line (", New_Line_Name,") and the", Reference_Line_Name, sep=" ")
   }
 
+print(outcome_1)
+
 #is there a general difference during the expansion phase between the data sets?
 Expansion_Data <- filter(All_Cloud_Volume_Data, Phase == "Initiation")
 
-Exp_Stat_Diff <- wilcox.test(Expansion_Data[which(Expansion_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
-                             Expansion_Data[which(Expansion_Data$Cell_Line==New_Line_Name),]$Cloud_Volume)
-Exp_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+#only perform stats test if data exists
+#create empty tibble for in case it doesn't exist
+Exp_p_values <- tibble()
+if (New_Line_Name %in% Expansion_Data$Cell_Line) {
 
-
-#if there is a difference, is it statistically less 
-Exp_Diff_Less <- wilcox.test(Expansion_Data[which(Expansion_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
-                             Expansion_Data[which(Expansion_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "less")
-Exp_Diff_Less$p.value #p = 1 suggests new cell line less coupling than the WT 
-
-#if there is a difference, is it statistically more>
-Exp_Diff_More <- wilcox.test(Expansion_Data[which(Expansion_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
-                             Expansion_Data[which(Expansion_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "greater")
-Exp_Diff_More$p.value #p = 1 suggests new cell line has more coupling than the WT
-
-#record p values in table
-e <- Exp_Stat_Diff$p.value
-f <- Exp_Diff_Less$p.value
-g <- Exp_Diff_More$p.value
-Exp_p_values <- tibble(e, f, g) %>%
-  transmute(Comparision = paste("Compare_Exp_Phase", Reference_Line_Name , "vs", New_Line_Name, sep='_'),
-            General_Stat_Diff = e,
-            Diff_Statistically_Less = f,
-            Diff_Statistically_More = g) 
-
-if (Exp_Stat_Diff$p.value < p) {
-  if (Exp_Diff_Less$p.value < Exp_Diff_More$p.value){
-    outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically bigger clouds, during the expansion phase, than the", Reference_Line_Name, sep=" ")
-  } else {
-    outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically smaller clouds, during the expansion phase, than the", Reference_Line_Name, sep=" ")
-  }} else {
-    outcome_2 <- paste("There is no statistical difference in cloud size, during the expansion phase, between the new cell line (", New_Line_Name,") and the", Reference_Line_Name, sep=" ")
-  }
+  Exp_Stat_Diff <- wilcox.test(Expansion_Data[which(Expansion_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
+                               Expansion_Data[which(Expansion_Data$Cell_Line==New_Line_Name),]$Cloud_Volume)
+  Exp_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+  
+  
+  #if there is a difference, is it statistically less 
+  Exp_Diff_Less <- wilcox.test(Expansion_Data[which(Expansion_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
+                               Expansion_Data[which(Expansion_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "less")
+  Exp_Diff_Less$p.value #p = 1 suggests new cell line less coupling than the WT 
+  
+  #if there is a difference, is it statistically more>
+  Exp_Diff_More <- wilcox.test(Expansion_Data[which(Expansion_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
+                               Expansion_Data[which(Expansion_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "greater")
+  Exp_Diff_More$p.value #p = 1 suggests new cell line has more coupling than the WT
+  
+  #record p values in table
+  e <- Exp_Stat_Diff$p.value
+  f <- Exp_Diff_Less$p.value
+  g <- Exp_Diff_More$p.value
+  Exp_p_values <- tibble(e, f, g) %>%
+    transmute(Comparision = paste("Compare_Exp_Phase", Reference_Line_Name , "vs", New_Line_Name, sep='_'),
+              General_Stat_Diff = e,
+              Diff_Statistically_Less = f,
+              Diff_Statistically_More = g) 
+  
+  if (Exp_Stat_Diff$p.value < p) {
+    if (Exp_Diff_Less$p.value < Exp_Diff_More$p.value){
+      outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically bigger clouds, during the expansion phase, than the", Reference_Line_Name, sep=" ")
+    } else {
+      outcome_2 <- paste("The new cell line (", New_Line_Name,") has statistically smaller clouds, during the expansion phase, than the", Reference_Line_Name, sep=" ")
+    }} else {
+      outcome_2 <- paste("There is no statistical difference in cloud size, during the expansion phase, between the new cell line (", New_Line_Name,") and the", Reference_Line_Name, sep=" ")
+    }
+  
+  print(outcome_2)
+}
 
 #is there a general difference during the Steady_State phase between the data sets?
 Steady_State_Data <- filter(All_Cloud_Volume_Data, Phase == "Maintenance")
 
-SS_Stat_Diff <- wilcox.test(Steady_State_Data[which(Steady_State_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
-                            Steady_State_Data[which(Steady_State_Data$Cell_Line==New_Line_Name),]$Cloud_Volume)
-SS_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+#only perform stats test if data exists
+#create empty tibble for in case it doesn't exist
+SS_p_values <- tibble()
+if (New_Line_Name %in% Steady_State_Data$Cell_Line) {
 
-
-#if there is a difference, is it statistically less 
-SS_Diff_Less <- wilcox.test(Steady_State_Data[which(Steady_State_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
-                            Steady_State_Data[which(Steady_State_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "less")
-SS_Diff_Less$p.value #p = 1 suggests new cell line less coupling than the WT 
-
-#if there is a difference, is it statistically more>
-SS_Diff_More <- wilcox.test(Steady_State_Data[which(Steady_State_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
-                            Steady_State_Data[which(Steady_State_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "greater")
-SS_Diff_More$p.value #p = 1 suggests new cell line has more coupling than the WT
-
-#record p values in table
-h <- SS_Stat_Diff$p.value
-i <- SS_Diff_Less$p.value
-j <- SS_Diff_More$p.value
-SS_p_values <- tibble(h, i, j) %>%
-  transmute(Comparision = paste("Compare_SS_Phase", Reference_Line_Name , "vs", New_Line_Name, sep='_'),
-            General_Stat_Diff = h,
-            Diff_Statistically_Less = i,
-            Diff_Statistically_More = j) 
-
-if (SS_Stat_Diff$p.value < p) {
-  if (SS_Diff_Less$p.value < SS_Diff_More$p.value){
-    outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically bigger clouds, during the Steady_State phase, than the", Reference_Line_Name, sep=" ")
-  } else {
-    outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically smaller clouds, during the Steady_State phase, than the", Reference_Line_Name, sep=" ")
-  }} else {
-    outcome_3 <- paste("There is no statistical difference in cloud size, during the Steady_State phase, between the new cell line (", New_Line_Name,") and the", Reference_Line_Name, sep=" ")
-  }
+  SS_Stat_Diff <- wilcox.test(Steady_State_Data[which(Steady_State_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
+                              Steady_State_Data[which(Steady_State_Data$Cell_Line==New_Line_Name),]$Cloud_Volume)
+  SS_Stat_Diff$p.value #p < 0 suggests a statistical difference / p > 0 suggests not statistical difference
+  
+  
+  #if there is a difference, is it statistically less 
+  SS_Diff_Less <- wilcox.test(Steady_State_Data[which(Steady_State_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
+                              Steady_State_Data[which(Steady_State_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "less")
+  SS_Diff_Less$p.value #p = 1 suggests new cell line less coupling than the WT 
+  
+  #if there is a difference, is it statistically more>
+  SS_Diff_More <- wilcox.test(Steady_State_Data[which(Steady_State_Data$Cell_Line==Reference_Line_Name),]$Cloud_Volume,
+                              Steady_State_Data[which(Steady_State_Data$Cell_Line==New_Line_Name),]$Cloud_Volume, alternative = "greater")
+  SS_Diff_More$p.value #p = 1 suggests new cell line has more coupling than the WT
+  
+  #record p values in table
+  h <- SS_Stat_Diff$p.value
+  i <- SS_Diff_Less$p.value
+  j <- SS_Diff_More$p.value
+  SS_p_values <- tibble(h, i, j) %>%
+    transmute(Comparision = paste("Compare_SS_Phase", Reference_Line_Name , "vs", New_Line_Name, sep='_'),
+              General_Stat_Diff = h,
+              Diff_Statistically_Less = i,
+              Diff_Statistically_More = j) 
+  
+  if (SS_Stat_Diff$p.value < p) {
+    if (SS_Diff_Less$p.value < SS_Diff_More$p.value){
+      outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically bigger clouds, during the Steady_State phase, than the", Reference_Line_Name, sep=" ")
+    } else {
+      outcome_3 <- paste("The new cell line (", New_Line_Name,") has statistically smaller clouds, during the Steady_State phase, than the", Reference_Line_Name, sep=" ")
+    }} else {
+      outcome_3 <- paste("There is no statistical difference in cloud size, during the Steady_State phase, between the new cell line (", New_Line_Name,") and the", Reference_Line_Name, sep=" ")
+    }
+  
+  print(outcome_3)
+}
 
 #combine all p values
 p_values <- p_values %>%
@@ -283,12 +301,4 @@ Save_Path <- paste(File_Path, Cell_Type, "Cloud_Volume", New_Line_Name, sep="/")
 write_csv(p_values, paste(Save_Path, paste(New_Line_Name, "_Cloud_Volume_Wilcox_p_values.csv", sep=""), sep="/"))
 
 
-#provide outcomes of Wilcoxon tests
-if (Stat_Diff$p.value < p) {
-  print(outcome_1)
-  print(outcome_2)
-  print(outcome_3)
-} else {
-  print(outcome_1)
-}
 

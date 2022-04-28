@@ -184,6 +184,12 @@ for (Data_Set in Data_Set_List) {
       
     }
     
+    # Check if any data existed for this phase, if not then quit
+    if (nrow(NNA_Compiled) == 0) {
+      print(paste("Warning: No data found for", Data_Set, Phase, "for the new cell line (", New_Line_Name, ")", sep=" "))
+      next
+    }
+    
     #add a column to NNA_Compiled which contains the raw C2-C1_NNA.csv file
     NNA_Compiled$Raw_Data <- lapply(NNA_Compiled$File_Path, read_csv)
     
@@ -220,6 +226,12 @@ for (Data_Set in Data_Set_List) {
   #creates a list containing the EdU tibble files
   EdU_List <- lapply(EdU_Files, read_csv)
   
+  # Check if any data existed for this phase, if not then quit
+  if (length(EdU_List) == 0) {
+    print(paste("Warning: Either EdU or random control data not found for", Data_Set, Phase, "for the new cell line (", New_Line_Name, ")", sep=" "))
+    next
+  }
+  
   #concatenates all the individual EdU tibbles into 1 tibble
   EdU_Compile <- bind_rows(EdU_List) %>%
     filter(volume > 0)                    #removes 1st row of separate EdU table where volume = 0 as x,y,z = 0
@@ -246,6 +258,12 @@ for (Data_Set in Data_Set_List) {
   
   #creates a list containing the Random tibble files
   Random_List <- lapply(Random_Files, read_csv)
+  
+  # Check if any data existed for this phase, if not then quit
+  if (length(Random_List) == 0) {
+    print(paste("Warning: No random control data found for", Data_Set, Phase, "for the new cell line (", New_Line_Name, ")", sep=" "))
+    next
+  }
   
   #concatenates all the individual Random tibbles into 1 tibble
   Random_Compile <- bind_rows(Random_List) %>%

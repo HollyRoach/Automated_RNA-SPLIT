@@ -75,7 +75,7 @@ Colour_4_ss <- "#41AB5D"  #sets colour for steady state phase new cell_line_3
 
 #set name of how cell lines should be presented in the plot - ensures name consistency with other papers
 #if name contains delta/triangle symbol use - "SPEN^"~Delta*"RRM"
-Name_1 <- bquote("METTL3_FKBP12"^"F36V") #sets name for new cell line
+Name_1 <- bquote("Protein1_FKBP12"^"F36V") #sets name for new cell line
 Name_2 <- bquote("WT")                   #sets name for Reference_Line_Name
 Name_3 <- bquote("Ciz1_KO")              #sets name for cell_line_3
 Name_4 <- bquote("SPEN"^~Delta*"RRM")    #sets name for cell_line_4
@@ -115,29 +115,46 @@ Input_File_Path <- choose_dir(caption = "Select (open on Mac) Watershed_Algorith
 #define file path to where "Pulse_Chase_Analysis" is located - results from this scripts will be stored here
 Output_File_Path <- choose_dir(caption = "Select (open on Mac) Pulse_Chase_Analysis folder, where compiled data will be stored")
 
+#Get all variables currently in environment, these are not removed after a script
+# 
+all_input_vars <- c(ls(), "all_input_vars")
 
 ################################################################################
 #Run scripts to compile and manipulate all the data
 source(here("Compilation_Manipulation", "C1_C2-Centroids_Compilation_Manipulation.R"))
+clean_env(all_input_vars)
 source(here("Compilation_Manipulation", "Cloud_Volume_Compilation_Manipulation.R"))
+clean_env(all_input_vars)
 source(here("Compilation_Manipulation", "Density_Compilation_Manipulation.R"))
+clean_env(all_input_vars)
 source(here("Compilation_Manipulation", "NNA_Compilation_Manipulation.R"))
+clean_env(all_input_vars)
 
 ################################################################################
 #Run scripts to inspect all the data
 source(here("Inspection", "Centroid_Inspection.R"))
+clean_env(all_input_vars)
 source(here("Inspection", "Cloud_Volume_Inspection.R"))
+clean_env(all_input_vars)
 source(here("Inspection", "Density_Inspection.R"))
+clean_env(all_input_vars)
 source(here("Inspection", "NNA_Inspection.R"))
+clean_env(all_input_vars)
 source(here("Inspection", "Total_Molecule_Count_Inspection.R"))
+clean_env(all_input_vars)
 source(here("Inspection", "Transcription_Dynamics_Inspection.R"))
+clean_env(all_input_vars)
 
 ################################################################################
 #Run scripts to plot and prefrom unpaired, two-tailed wilcoxon stats test on all the data
-print("Overall outputs from stats tests")
-
+print("Outcomes of wilcoxon stats test:")
 source(here("Analysis", "Cloud_Volumes_Box_Plot_Wilcoxon.R"))
+clean_env(all_input_vars)
 source(here("Analysis", "Density_Box_Plot_Wilcoxon.R"))
+clean_env(all_input_vars)
 source(here("Analysis", "Molecule_Count_Box_Plot_Wilcoxon.R"))
-source(here("Analysis", "Transcription_Box_Plot_Wilcoxon.R"))
+clean_env(all_input_vars)
 source(here("Analysis", "NNA_Violin_Plot_Wilcoxon.R"))
+clean_env(all_input_vars)
+source(here("Analysis", "Transcription_Box_Plot_Wilcoxon.R"))
+clean_env(all_input_vars)

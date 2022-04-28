@@ -25,7 +25,7 @@
 #set name of new cell line - should be spelled the same as folder name within the directory
 #make sure not to use any spaces or symbols other than an underscore (_), dash (-), or full stop (.)
 #eg "Mettl3_dTAG" or "SPEN_RRM_del" or "Ciz1_KO"
-New_Line_Name <- "Test"           
+New_Line_Name <- "Protein1_dTAG"           
 
 #define type of cells used in experiment - either "mESCs" or "NPCs"
 Cell_Type <- "mESCs"
@@ -75,7 +75,7 @@ Colour_4_ss <- "#41AB5D"  #sets colour for steady state phase new cell_line_3
 
 #set name of how cell lines should be presented in the plot - ensures name consistency with other papers
 #if name contains delta/triangle symbol use - "SPEN^"~Delta*"RRM"
-Name_1 <- bquote("METTL3_FKBP12"^"F36V") #sets name for new cell line
+Name_1 <- bquote("Protein1_FKBP12"^"F36V") #sets name for new cell line
 Name_2 <- bquote("WT")                   #sets name for Reference_Line_Name
 Name_3 <- bquote("Ciz1_KO")              #sets name for cell_line_3
 Name_4 <- bquote("SPEN"^~Delta*"RRM")    #sets name for cell_line_4
